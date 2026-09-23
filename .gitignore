@@ -1,0 +1,10 @@
+# Publish only instructions, scripts, and one selected demo video.
+*
+!.gitignore
+!README.md
+!AGENTS.md
+!scripts/
+!scripts/install.sh
+!scripts/run_orange_juice.sh
+!demos/
+!demos/main_orange_juice.mp4
