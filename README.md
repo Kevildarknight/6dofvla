@@ -2,9 +2,11 @@
 
 This repository reproduces a **closed-loop robot rollout**, not a model-loading smoke test. A fine-tuned SmolVLA 0.45B policy observes the simulated Franka robot and predicts actions until it picks up the orange juice carton and places it in the basket. LIBERO reports success for the recorded episode.
 
-**[Watch the main orange juice demo (MP4)](demos/main_orange_juice.mp4)**
+[![SmolVLA moves the orange juice carton into the basket in LIBERO](demos/main_orange_juice.gif)](demos/main_orange_juice.mp4)
 
-The video is an 8.1-second presentation cut of the successful rollout. It is slowed down, resized, and captioned; the robot trajectory and the evaluator's success flag were not changed. This is the **only video included in this repository**. The evaluator generates a fresh raw video when you run the demo locally.
+**[Watch or download the main demo as MP4](demos/main_orange_juice.mp4)**
+
+The GIF above plays directly in the README and links to the MP4. Both show the same 8.1-second presentation cut of the successful rollout. It is slowed down, resized, and captioned; the robot trajectory and the evaluator's success flag were not changed. The MP4 is the only video file in this repository; the GIF is a small preview made from it. The evaluator generates a fresh raw video when you run the demo locally.
 
 | Run | Value |
 | --- | --- |
@@ -12,11 +14,26 @@ The video is an 8.1-second presentation cut of the successful rollout. It is slo
 | Instruction | “pick up the orange juice and place it in the basket” |
 | Policy | [HuggingFaceVLA/smolvla_libero](https://huggingface.co/HuggingFaceVLA/smolvla_libero), pinned to revision 6721902bc4d61e50a3bfdb11dfb4cb626f05d102 |
 | Evaluation | One full episode, seed 1000, batch size 1; successes: [true] |
-| Tested hardware | Ubuntu 24.04.4, NVIDIA RTX 3050 Laptop GPU with 4 GB VRAM |
+
+## Tested machine and resource use
+
+| Component | Configuration or observation |
+| --- | --- |
+| Operating system | Ubuntu 24.04.4 LTS, x86-64 |
+| CPU | Intel Core i5-12450H, 12 logical threads |
+| System memory | 30 GiB detected; peak RAM usage was not measured |
+| GPU | NVIDIA GeForce RTX 3050 Laptop GPU, 4,096 MiB VRAM |
+| NVIDIA driver | 580.173.02 |
+| Software | Python 3.12.3, LeRobot 0.6.1, PyTorch 2.7.1+cu126, Transformers 5.5.4, hf-libero 0.1.4, robosuite 1.4.0, MuJoCo 3.8.1 |
+| GPU memory during the full orange juice episode | **2,019 MiB peak total GPU memory used**; 15 MiB at idle, measured with nvidia-smi once per second |
+| Evaluation time | 84.95 seconds for one episode in the measured run, excluding installation and downloads |
+| Local installation size | About 9.3 GiB for .venv, the policy files, and the LeRobot checkout; package caches and generated outputs may require more |
+
+The 2,019 MiB figure includes the policy, CUDA context, and simulation rendering. It is an observed peak on this machine, **not a guaranteed minimum VRAM requirement**. The tested configuration has 4 GiB of VRAM; leave headroom for driver use and differences between systems.
 
 ## Install
 
-You need Linux, Python 3.12 with venv, Git, an NVIDIA driver and CUDA-capable GPU, and enough disk space for PyTorch, LeRobot, the checkpoint, and LIBERO assets. The validated machine used driver 580.173.02, PyTorch 2.7.1+cu126, MuJoCo 3.8.1, and robosuite 1.4.0. A separate CUDA Toolkit installation was not needed for the tested PyTorch wheel.
+You need Linux, Python 3.12 with venv, Git, an NVIDIA driver and CUDA-capable GPU, and enough disk space for PyTorch, LeRobot, the checkpoint, and LIBERO assets. The full tested configuration and measured resource use are listed above. A separate CUDA Toolkit installation was not needed for the tested PyTorch wheel.
 
 ~~~bash
 git clone https://github.com/Huytai1o2/smolVLA.git
