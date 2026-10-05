@@ -9,3 +9,17 @@
 !demos/
 !demos/main_orange_juice.mp4
 !demos/main_orange_juice.gif
+!plugins/
+!plugins/lerobot_env_triple_basket/
+!plugins/lerobot_env_triple_basket/pyproject.toml
+!plugins/lerobot_env_triple_basket/src/
+!plugins/lerobot_env_triple_basket/src/lerobot_env_triple_basket/
+!plugins/lerobot_env_triple_basket/src/lerobot_env_triple_basket/__init__.py
+!plugins/lerobot_env_triple_basket/src/lerobot_env_triple_basket/data/
+!plugins/lerobot_env_triple_basket/src/lerobot_env_triple_basket/data/bddl/
+!plugins/lerobot_env_triple_basket/src/lerobot_env_triple_basket/data/bddl/*.bddl
+!scripts/run_triple_basket.sh
+!scripts/triple_basket/
+!scripts/triple_basket/*.py
+!docs/
+!docs/triple_basket.md

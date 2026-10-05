@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lerobot_env_triple_basket"
+version = "0.1.0"
+description = "LIBERO task: put three identical items into the basket (LeRobot plugin, no vendor edits)"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lerobot_env_triple_basket = ["data/bddl/*.bddl", "data/init_states/*.pruned_init"]
