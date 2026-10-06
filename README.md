@@ -63,4 +63,8 @@ We ran one complete episode for each of the ten LIBERO Object tasks at seed 1000
 
 The policy and benchmark come from [SmolVLA](https://arxiv.org/abs/2506.01844), [LeRobot's LIBERO documentation](https://huggingface.co/docs/lerobot/libero), and the [published fine-tuned checkpoint](https://huggingface.co/HuggingFaceVLA/smolvla_libero). This project does not include the original model weights or vendor source code in Git.
 
+## Custom task: three butters into the basket
+
+[plugins/lerobot_env_libero_three_items](plugins/lerobot_env_libero_three_items/README.md) adds a new LIBERO task, “pick up the three butters one by one and place them all in the basket”, as a LeRobot environment plugin. It includes a fixed scene, a success check that requires all three butters to rest in the basket, scripted scene validation, demonstration collection, fine-tuning and evaluation scripts. The original checkpoint does not solve this task; it must be fine-tuned on the collected demonstrations first.
+
 Students using Codex can open the cloned repository and ask it to follow [AGENTS.md](AGENTS.md) to install and run the orange juice episode, then inspect the evaluator result and video.
