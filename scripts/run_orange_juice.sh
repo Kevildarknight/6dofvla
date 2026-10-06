@@ -32,7 +32,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
   --policy.device=cuda \
   --env.type=libero \
   --env.task=libero_object \
-  --env.task_ids='[9]' \
+  --env.task_ids='[2]' \
   --eval.batch_size=1 \
   --eval.n_episodes=1 \
   --seed=1000 \
@@ -45,9 +45,9 @@ from pathlib import Path
 
 result_path = Path(sys.argv[1])
 data = json.loads(result_path.read_text())
-task = next(item for item in data["per_task"] if item["task_group"] == "libero_object" and item["task_id"] == 9)
+task = next(item for item in data["per_task"] if item["task_group"] == "libero_object" and item["task_id"] == 2)
 success = task["metrics"]["successes"][0]
-print(f"LIBERO Object task 9 success: {success}")
+print(f"LIBERO Object task 2 success: {success}")
 print(f"Evaluator result: {result_path}")
-print(f"Raw rollout video: {result_path.parent / 'videos/libero_object_9/eval_episode_0.mp4'}")
+print(f"Raw rollout video: {result_path.parent / 'videos/libero_object_2/eval_episode_2.mp4'}")
 PY
