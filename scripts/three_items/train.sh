@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Stage 5b: fine-tune the LIBERO SmolVLA checkpoint on the three-butter demos.
-# Usage: bash scripts/three_items/train.sh [output_dir] [extra lerobot-train args...]
+# Fine-tune the LIBERO SmolVLA checkpoint on the three-butter data.
+# Usage: [DATASET=three_items_mix|three_items_demos] bash scripts/three_items/train.sh [output_dir] [extra args...]
+# DATASET defaults to three_items_mix: the demos plus part of the original LIBERO data (build_mix.sh).
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
 output_dir="${1:-outputs/three_items_train_$(date +%Y%m%d_%H%M%S)}"
 shift || true
-if [[ ! -d data/three_items_demos ]]; then
-  echo "No demonstrations found. Run: bash scripts/three_items/collect_demos.sh" >&2
+dataset="${DATASET:-three_items_mix}"
+if [[ ! -f "data/$dataset/meta/info.json" ]]; then
+  echo "data/$dataset not found. Run collect_demos.sh (and build_mix.sh for the mix) first." >&2
   exit 1
 fi
 
@@ -18,8 +20,8 @@ fi
   --policy.path=models/smolvla_libero \
   --policy.device=cuda \
   --policy.push_to_hub=false \
-  --dataset.repo_id=local/three_items_demos \
-  --dataset.root=data/three_items_demos \
+  --dataset.repo_id="local/$dataset" \
+  --dataset.root="data/$dataset" \
   --batch_size="${BATCH_SIZE:-4}" \
   --steps="${STEPS:-20000}" \
   --save_freq="${SAVE_FREQ:-5000}" \

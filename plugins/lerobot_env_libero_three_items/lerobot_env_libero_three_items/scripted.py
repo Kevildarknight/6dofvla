@@ -6,7 +6,10 @@ proportional controller. Each item goes through the same cycle:
 
     above item -> down -> close -> lift -> above basket -> lower -> open -> lift
 
-Horizontal moves happen only at CARRY_Z, above the basket rim; a diagonal path
+Before descending, the gripper turns about the vertical axis so its fingers
+close across the butter's 4 cm side, whatever the butter's yaw. It turns back
+to its starting orientation while carrying, so every butter is dropped the same
+way. Horizontal moves happen only at CARRY_Z, above the basket rim; a diagonal path
 from the basket to the next item would clip the rim and drag the basket.
 
 Actions use the LIBERO/robosuite OSC_POSE delta convention that the SmolVLA
@@ -17,6 +20,8 @@ unit is 0.05 m / 0.5 rad per control step and gripper -1 opens, +1 closes.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+import math
 
 import numpy as np
 import robosuite.utils.transform_utils as T
@@ -31,14 +36,19 @@ GRASP_Z = 0.012  # end-effector height when the fingers close around a flat butt
 CARRY_Z = 0.22  # clears the basket rim (0.141 m) with the butter hanging below
 RELEASE_Z = 0.17  # opening the fingers below the rim pushes the basket wall
 GRIP_STEPS = 15
-# Small offsets inside the basket so later butters land beside earlier ones.
-DROP_OFFSETS = {"item_1": (0.0, -0.02), "item_2": (0.0, 0.02), "item_3": (0.0, 0.0)}
+ROT_TOLERANCE = 0.05  # rad; the approach waits for the wrist to finish turning
+# Segments that use the item-aligned gripper yaw; the others use the start orientation.
+ITEM_ALIGNED = {"approach", "descend", "grasp", "lift"}
+# Small offsets inside the basket so later butters land beside earlier ones,
+# indexed by pick order (first, second, third).
+DROP_OFFSETS = ((0.0, -0.02), (0.0, 0.02), (0.0, 0.0))
 
 
 @dataclass
 class Segment:
     name: str
     item: str
+    slot: int  # position in the pick order; selects the drop offset
     target: str  # "item" | "basket" | "hold"
     z: float
     gripper: float
@@ -48,18 +58,18 @@ class Segment:
     max_steps: int = 120
 
 
-def _plan() -> list[Segment]:
+def _plan(order: tuple[str, ...]) -> list[Segment]:
     plan = []
-    for item in ITEMS:
+    for slot, item in enumerate(order):
         plan += [
-            Segment("approach", item, "item", CARRY_Z, OPEN),
-            Segment("descend", item, "item", GRASP_Z, OPEN, max_speed=0.4, tolerance=0.005),
-            Segment("grasp", item, "hold", GRASP_Z, CLOSE, fixed_steps=GRIP_STEPS),
-            Segment("lift", item, "hold", CARRY_Z, CLOSE, max_speed=0.6),
-            Segment("carry", item, "basket", CARRY_Z, CLOSE),
-            Segment("lower", item, "basket", RELEASE_Z, CLOSE, max_speed=0.4),
-            Segment("release", item, "hold", RELEASE_Z, OPEN, fixed_steps=GRIP_STEPS),
-            Segment("retreat", item, "hold", CARRY_Z, OPEN, max_speed=0.6),
+            Segment("approach", item, slot, "item", CARRY_Z, OPEN),
+            Segment("descend", item, slot, "item", GRASP_Z, OPEN, max_speed=0.4, tolerance=0.005),
+            Segment("grasp", item, slot, "hold", GRASP_Z, CLOSE, fixed_steps=GRIP_STEPS),
+            Segment("lift", item, slot, "hold", CARRY_Z, CLOSE, max_speed=0.6),
+            Segment("carry", item, slot, "basket", CARRY_Z, CLOSE),
+            Segment("lower", item, slot, "basket", RELEASE_Z, CLOSE, max_speed=0.4),
+            Segment("release", item, slot, "hold", RELEASE_Z, OPEN, fixed_steps=GRIP_STEPS),
+            Segment("retreat", item, slot, "hold", CARRY_Z, OPEN, max_speed=0.6),
         ]
     return plan
 
@@ -67,15 +77,22 @@ def _plan() -> list[Segment]:
 class ScriptedThreeItemsExpert:
     """Call reset(env) after env.reset(), then act(env) once per control step."""
 
-    def __init__(self, rng: np.random.Generator | None = None, jitter: float = 0.0):
+    def __init__(self, rng: np.random.Generator | None = None, jitter: float = 0.0, shuffle_order: bool = False):
         self.rng = rng or np.random.default_rng(0)
         self.jitter = jitter
-        self.plan = _plan()
+        self.shuffle_order = shuffle_order
+        self.order = ITEMS
+        self.plan = _plan(self.order)
 
     def reset(self, env) -> None:
+        # The butters look identical, so any pick order is valid; shuffling it
+        # keeps a policy from tying "first" to one particular ID or position.
+        self.order = tuple(self.rng.permutation(ITEMS)) if self.shuffle_order else ITEMS
+        self.plan = _plan(self.order)
         self.index = 0
         self.steps_in_segment = 0
-        self.target_quat = self._eef_quat(env)
+        self.base_quat = self._eef_quat(env)
+        self._item_quat: dict[str, np.ndarray] = {}
         self._hold_xy: np.ndarray | None = None
         # Per-episode waypoint noise gives the demonstrations some variety.
         self._noise = {
@@ -99,14 +116,18 @@ class ScriptedThreeItemsExpert:
         error = target - eef
 
         delta = np.clip(error / POS_SCALE, -seg.max_speed, seg.max_speed)
-        rot = np.clip(self._rotation_error(env) / ROT_SCALE, -0.5, 0.5)
+        rot_error = self._rotation_error(env, self._target_quat(env, seg))
+        rot = np.clip(rot_error / ROT_SCALE, -0.5, 0.5)
         action = np.concatenate([delta, rot, [seg.gripper]]).astype(np.float32)
 
         self.steps_in_segment += 1
+        arrived = np.linalg.norm(error) < seg.tolerance
+        if seg.name == "approach":
+            arrived = arrived and np.linalg.norm(rot_error) < ROT_TOLERANCE
         finished = (
             self.steps_in_segment >= seg.fixed_steps
             if seg.fixed_steps
-            else np.linalg.norm(error) < seg.tolerance or self.steps_in_segment >= seg.max_steps
+            else arrived or self.steps_in_segment >= seg.max_steps
         )
         if finished:
             self.index += 1
@@ -118,7 +139,7 @@ class ScriptedThreeItemsExpert:
         if seg.target == "item":
             xy = self._body_pos(env, seg.item)[:2]
         elif seg.target == "basket":
-            xy = self._body_pos(env, BASKET)[:2] + np.array(DROP_OFFSETS[seg.item])
+            xy = self._body_pos(env, BASKET)[:2] + np.array(DROP_OFFSETS[seg.slot])
         else:  # hold the xy where this segment started, move only in z
             if self._hold_xy is None:
                 self._hold_xy = eef[:2].copy()
@@ -139,9 +160,37 @@ class ScriptedThreeItemsExpert:
     def _eef_quat(env) -> np.ndarray:
         return T.mat2quat(env.sim.data.site_xmat[env.robots[0].eef_site_id].reshape(3, 3))
 
-    def _rotation_error(self, env) -> np.ndarray:
-        """Axis-angle rotation (world frame) from the current to the initial gripper orientation."""
-        q = T.quat_multiply(self.target_quat, T.quat_inverse(self._eef_quat(env)))
+    def _target_quat(self, env, seg: Segment) -> np.ndarray:
+        if seg.name not in ITEM_ALIGNED:
+            return self.base_quat
+        if seg.item not in self._item_quat:
+            # Fixed once per item, at the start of its approach, while it lies still.
+            yaw = self.item_yaw(env, seg.item)
+            turn = np.array([0.0, 0.0, math.sin(yaw / 2), math.cos(yaw / 2)])  # xyzw
+            self._item_quat[seg.item] = T.quat_multiply(turn, self.base_quat)
+        return self._item_quat[seg.item]
+
+    @staticmethod
+    def item_yaw(env, name: str) -> float:
+        """Yaw of the butter's long side relative to world x, wrapped to [-90, 90] deg.
+
+        The start orientation closes the fingers along world y, which grips a
+        butter whose long side lies along world x; this is the turn needed for
+        any other heading.
+        """
+        model, data = env.sim.model, env.sim.data
+        body = env.obj_body_id[name]
+        box = max(
+            (g for g in range(model.ngeom) if model.geom_bodyid[g] == body and model.geom_type[g] == 6),
+            key=lambda g: model.geom_size[g].max(),
+        )
+        long_axis = data.geom_xmat[box].reshape(3, 3)[:, int(np.argmax(model.geom_size[box]))]
+        yaw = math.atan2(long_axis[1], long_axis[0])
+        return (yaw + math.pi / 2) % math.pi - math.pi / 2
+
+    def _rotation_error(self, env, target_quat: np.ndarray) -> np.ndarray:
+        """Axis-angle rotation (world frame) from the current to the target gripper orientation."""
+        q = T.quat_multiply(target_quat, T.quat_inverse(self._eef_quat(env)))
         if q[3] < 0:
             q = -q
         return T.quat2axisangle(q)
