@@ -9,3 +9,17 @@
 !demos/
 !demos/main_orange_juice.mp4
 !demos/main_orange_juice.gif
+
+# Custom task: three butters into the basket (plugin, scripts, fixed init state).
+!plugins/
+!plugins/lerobot_env_libero_three_items/
+!plugins/lerobot_env_libero_three_items/pyproject.toml
+!plugins/lerobot_env_libero_three_items/README.md
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/*.py
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/three_butters_basket.bddl
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/three_butters_basket.pruned_init
+!scripts/three_items/
+!scripts/three_items/*.sh
+!scripts/three_items/*.py

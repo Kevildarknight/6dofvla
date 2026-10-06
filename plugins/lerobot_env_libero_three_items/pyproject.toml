@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# LeRobot imports installed distributions whose name starts with "lerobot_env_",
+# so this name must stay identical to the import package below.
+name = "lerobot_env_libero_three_items"
+version = "0.1.0"
+description = "LIBERO task: pick up three butters one by one and place all of them in the basket"
+requires-python = ">=3.12"
+
+[tool.setuptools]
+packages = ["lerobot_env_libero_three_items"]
+
+[tool.setuptools.package-data]
+lerobot_env_libero_three_items = ["assets/*.bddl", "assets/*.pruned_init"]
