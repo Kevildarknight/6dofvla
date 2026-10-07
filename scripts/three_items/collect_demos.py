@@ -9,6 +9,14 @@ Variety between episodes: the layout, up to +-1 cm of waypoint noise, a random
 pick order, and the instruction (the evaluation sentence for half of the
 episodes, otherwise one of LANGUAGE_VARIANTS).
 
+With --noise (DART), the robot executes the expert's action plus noise, while
+the dataset stores the expert's clean action for the state the robot is in.
+The arm then drifts off the ideal path, and the expert, which steers from the
+current position, records how to get back. Demonstrations without noise never
+show a correction, so a policy trained on them has nothing to fall back on
+once it drifts. Noise is off while the gripper closes or opens, so it does not
+just make the robot drop a butter.
+
 Observations go through the same steps lerobot-eval applies before the policy
 (preprocess_observation + LiberoProcessorStep), so the stored images are rotated
 180 degrees and the state is [eef_pos(3), eef_axis_angle(3), gripper_qpos(2)],
@@ -48,6 +56,40 @@ def to_policy_frame(observation, env_preprocessor):
     return frame
 
 
+class ExecutionNoise:
+    """Noise added to executed actions: small per-step jitter plus occasional pushes.
+
+    A push holds one random direction for several steps, which moves the gripper
+    a few centimetres; per-step jitter alone averages out within a few steps.
+    Values are in action units (1.0 = 5 cm or 0.5 rad of commanded motion).
+    """
+
+    def __init__(self, rng, scale):
+        self.rng = rng
+        self.scale = scale
+        self.push = np.zeros(6)
+        self.push_steps = 0
+
+    def reset(self):
+        self.push[:] = 0
+        self.push_steps = 0
+
+    def __call__(self, action, active):
+        if not active or self.scale == 0:
+            self.reset()
+            return action
+        if self.push_steps == 0 and self.rng.random() < 0.04:
+            direction = self.rng.normal(size=3)
+            self.push[:3] = direction / np.linalg.norm(direction) * self.rng.uniform(0.3, 0.6)
+            self.push[3:] = self.rng.normal(0, 0.15, size=3)
+            self.push_steps = int(self.rng.integers(5, 16))
+        jitter = np.concatenate([self.rng.normal(0, 0.1, 3), self.rng.normal(0, 0.05, 3)])
+        noisy = action.copy()
+        noisy[:6] += self.scale * (jitter + (self.push if self.push_steps else 0))
+        self.push_steps = max(self.push_steps - 1, 0)
+        return np.clip(noisy, -1.0, 1.0).astype(np.float32)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=Path("data/three_items_demos"))
@@ -61,6 +103,9 @@ def main():
     parser.add_argument("--fixed-order", action="store_true", help="always pick item_1, item_2, item_3")
     parser.add_argument(
         "--variant-prob", type=float, default=0.5, help="share of episodes using a rephrased instruction"
+    )
+    parser.add_argument(
+        "--noise", type=float, default=0.0, help="scale of execution noise (DART); 0 records clean runs"
     )
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
@@ -83,6 +128,7 @@ def main():
     )
     rng = np.random.default_rng(args.seed)
     expert = ScriptedThreeItemsExpert(rng=rng, jitter=args.jitter, shuffle_order=not args.fixed_order)
+    noise = ExecutionNoise(rng, args.noise)
 
     saved = attempts = 0
     while saved < args.episodes:
@@ -90,12 +136,18 @@ def main():
         layout = env.init_state_id % len(env._init_states)  # the state this reset restores
         observation, _ = env.reset(seed=args.seed + attempts)
         expert.reset(env.sim_env)
+        noise.reset()
+        pushed = 0
         task = str(rng.choice(LANGUAGE_VARIANTS)) if rng.random() < args.variant_prob else LANGUAGE
         success = False
         for _ in range(EPISODE_LENGTH):
+            segment = expert.segment
             action = expert.act(env.sim_env)
             dataset.add_frame({**to_policy_frame(observation, env_preprocessor), "action": action, "task": task})
-            observation, _, terminated, _, info = env.step(action)
+            # Gripper closing/opening segments hold still; perturb everything else.
+            executed = noise(action, active=segment is not None and not segment.fixed_steps)
+            pushed += noise.push_steps > 0
+            observation, _, terminated, _, info = env.step(executed)
             if terminated:
                 success = info["is_success"]
                 break
@@ -104,7 +156,7 @@ def main():
             saved += 1
             print(
                 f"episode {saved}/{args.episodes}: layout {layout}, order {' '.join(expert.order)}, "
-                f"task '{task}', {dataset.meta.total_frames} frames total",
+                f"task '{task}', {pushed} pushed steps, {dataset.meta.total_frames} frames total",
                 flush=True,
             )
         else:

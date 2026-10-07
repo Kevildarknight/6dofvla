@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Step 2c: merge the three-butter demos and the LIBERO basket subset into one dataset.
-# Usage: bash scripts/three_items/build_mix.sh [--overwrite]
+# Usage: [DEMOS=three_items_demos] [MIX=three_items_mix] bash scripts/three_items/build_mix.sh [--overwrite]
+#   DEMOS: demo dataset under data/ (three_items_demos_dart for the noisy DART demos).
+#   MIX:   name of the merged dataset under data/.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
-demos=data/three_items_demos
+demos_name="${DEMOS:-three_items_demos}"
+mix_name="${MIX:-three_items_mix}"
+demos="data/$demos_name"
 subset=data/libero_basket_subset
-mix=data/three_items_mix
+mix="data/$mix_name"
 for dir in "$demos" "$subset"; do
   if [[ ! -f "$dir/meta/info.json" ]]; then
     echo "Missing $dir. Run collect_demos.sh and prepare_libero_subset.sh first." >&2
@@ -22,10 +26,10 @@ if [[ -e "$mix" ]]; then
 fi
 
 .venv/bin/lerobot-edit-dataset \
-  --new_repo_id=local/three_items_mix \
+  --new_repo_id="local/$mix_name" \
   --new_root="$mix" \
   --operation.type=merge \
-  --operation.repo_ids="['local/three_items_demos', 'local/libero_basket_subset']" \
+  --operation.repo_ids="['local/$demos_name', 'local/libero_basket_subset']" \
   --operation.roots="['$demos', '$subset']"
 
 .venv/bin/python - "$mix" <<'PY'
