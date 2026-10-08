@@ -19,7 +19,8 @@
 !plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/*.py
 !plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/
 !plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/three_butters_basket.bddl
-!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/three_butters_basket.pruned_init
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/three_butters_basket*.pruned_init
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/three_butters_basket*.layouts.json
 !scripts/three_items/
 !scripts/three_items/*.sh
 !scripts/three_items/*.py

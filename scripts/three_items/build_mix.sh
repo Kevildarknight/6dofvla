@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Step 2c: merge the three-butter demos and the LIBERO basket subset into one dataset.
+# Usage: [DEMOS=three_items_demos] [MIX=three_items_mix] bash scripts/three_items/build_mix.sh [--overwrite]
+#   DEMOS: demo dataset under data/ (three_items_demos_dart for the noisy DART demos).
+#   MIX:   name of the merged dataset under data/.
+set -euo pipefail
+source "$(dirname "$0")/env.sh"
+
+demos_name="${DEMOS:-three_items_demos}"
+mix_name="${MIX:-three_items_mix}"
+demos="data/$demos_name"
+subset=data/libero_basket_subset
+mix="data/$mix_name"
+for dir in "$demos" "$subset"; do
+  if [[ ! -f "$dir/meta/info.json" ]]; then
+    echo "Missing $dir. Run collect_demos.sh and prepare_libero_subset.sh first." >&2
+    exit 1
+  fi
+done
+if [[ -e "$mix" ]]; then
+  if [[ "${1:-}" != "--overwrite" ]]; then
+    echo "$mix exists; pass --overwrite to rebuild it." >&2
+    exit 1
+  fi
+  rm -rf "$mix"
+fi
+
+.venv/bin/lerobot-edit-dataset \
+  --new_repo_id="local/$mix_name" \
+  --new_root="$mix" \
+  --operation.type=merge \
+  --operation.repo_ids="['local/$demos_name', 'local/libero_basket_subset']" \
+  --operation.roots="['$demos', '$subset']"
+
+.venv/bin/python - "$mix" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+import pandas as pd
+from lerobot_env_libero_three_items.task import LANGUAGE, LANGUAGE_VARIANTS
+
+root = Path(sys.argv[1])
+info = json.loads((root / "meta/info.json").read_text())
+episodes = pd.concat(pd.read_parquet(p) for p in sorted((root / "meta/episodes").rglob("*.parquet")))
+episodes["task"] = episodes["tasks"].str[0]
+butter = episodes["task"].isin([LANGUAGE, *LANGUAGE_VARIANTS])
+print(f"{root}: {info['total_episodes']} episodes, {info['total_frames']} frames")
+for label, mask in (("three-butter demos", butter), ("LIBERO basket subset", ~butter)):
+    frames = int(episodes.loc[mask, "length"].sum())
+    print(f"  {label}: {int(mask.sum())} episodes, {frames} frames ({frames / info['total_frames']:.0%})")
+PY
