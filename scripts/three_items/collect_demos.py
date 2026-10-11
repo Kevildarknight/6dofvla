@@ -108,17 +108,26 @@ def main():
         "--noise", type=float, default=0.0, help="scale of execution noise (DART); 0 records clean runs"
     )
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--append", action="store_true", help="ghi nối tiếp vào dữ liệu có sẵn")
     args = parser.parse_args()
 
     if args.root.exists():
-        if not args.overwrite:
-            raise SystemExit(f"{args.root} exists; pass --overwrite to replace it.")
-        shutil.rmtree(args.root)
+        if args.append:
+            pass  # Nếu có --append thì giữ nguyên thư mục cũ, không xóa
+        elif not args.overwrite:
+            raise SystemExit(f"{args.root} exists; pass --overwrite to replace it, or --append to add episodes.")
+        else:
+            shutil.rmtree(args.root)
 
     env_preprocessor, _ = LiberoThreeItemsEnv().get_env_processors()
-    dataset = LeRobotDataset.create(
-        repo_id=args.repo_id, fps=FPS, features=FEATURES, root=args.root, robot_type="panda", use_videos=True
-    )
+
+    # Nếu chọn append và thư mục đã có dữ liệu -> dùng resume() có sẵn của LeRobot
+    if args.append and args.root.exists():
+        dataset = LeRobotDataset.resume(repo_id=args.repo_id, root=args.root)
+    else:
+        dataset = LeRobotDataset.create(
+            repo_id=args.repo_id, fps=FPS, features=FEATURES, root=args.root, robot_type="panda", use_videos=True
+        )
     env = ThreeItemsLiberoEnv(
         task_id=args.task_id,
         obs_type="pixels_agent_pos",
@@ -131,10 +140,14 @@ def main():
     noise = ExecutionNoise(rng, args.noise)
 
     saved = attempts = 0
+    # Lấy số bài đã có trong dataset để tiếp tục (ví dụ đã có 15 bài thì bài tiếp theo là 16)
+    start_episodes = dataset.meta.total_episodes if (args.append and args.root.exists()) else 0
+    env.init_state_id = start_episodes % len(env._init_states)
+
     while saved < args.episodes:
         attempts += 1
-        layout = env.init_state_id % len(env._init_states)  # the state this reset restores
-        observation, _ = env.reset(seed=args.seed + attempts)
+        layout = env.init_state_id % len(env._init_states)
+        observation, _ = env.reset(seed=args.seed + start_episodes + attempts)
         expert.reset(env.sim_env)
         noise.reset()
         pushed = 0
