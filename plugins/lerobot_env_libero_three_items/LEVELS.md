@@ -71,6 +71,12 @@ For each task, the script places the objects, lets them settle, saves the initia
 
 All three objects ended inside the container in every task.
 
+```bash
+bash scripts/levels/render_check.sh   # GPU; videos and overview.png in outputs/levels_render_check/
+```
+
+This renders the same scripted runs through the cameras the policy uses. It is how a missing-visuals bug was found: the generated geoms are collision geoms, which the cameras do not draw, so robosuite is asked to add a drawn copy of each (`duplicate_collision_geoms=True` in shapes.py). With that fix, all ten tasks render with the objects and containers visible and succeed at the same steps as without cameras.
+
 ## Demonstrations and evaluation
 
 ```bash

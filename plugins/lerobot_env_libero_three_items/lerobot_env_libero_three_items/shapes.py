@@ -169,7 +169,9 @@ class _ShapeObject(MujocoXMLObject):
             name=name,
             joints=[dict(type="free", damping="0.0005")],
             obj_type="all",
-            duplicate_collision_geoms=False,
+            # The generated geoms are collision geoms (group 0), which cameras do
+            # not draw; robosuite adds a drawn copy (group 1) of each one.
+            duplicate_collision_geoms=True,
         )
         self.category_name = self.category
         # Keep the generated orientation; layouts set the yaw explicitly.
