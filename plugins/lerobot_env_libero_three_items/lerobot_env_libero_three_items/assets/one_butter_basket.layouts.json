@@ -1,0 +1,21 @@
+{
+  "rejected": 0,
+  "layouts": [
+    {
+      "xy": {
+        "item_1": [
+          -0.1,
+          -0.18
+        ],
+        "basket_1": [
+          0.0,
+          0.25
+        ]
+      },
+      "item_yaw": {
+        "item_1": 0.0
+      },
+      "scripted_success_step": 165
+    }
+  ]
+}
