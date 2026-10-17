@@ -6,9 +6,9 @@ An item counts as "in the basket" at a control step when all of these hold:
   * it is not touching the gripper (the robot has let go of it),
   * it moved less than SETTLE_SPEED since the previous control step.
 
-The task succeeds once all three items satisfy this for HOLD_STEPS consecutive
-control steps, so an item swinging through the basket or still held over it
-never triggers success.
+The task succeeds once every item in the scene (three butters, or one in task 3)
+satisfies this for HOLD_STEPS consecutive control steps, so an item swinging
+through the basket or still held over it never triggers success.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .task import BASKET, ITEMS
+from .task import BASKET, scene_items
 
 CONTAIN_SITE = f"{BASKET}_contain_region"
 XY_MARGIN = 0.005  # metres trimmed from each side of the contain box
@@ -57,12 +57,12 @@ class BasketSuccessChecker:
     _hold: int = 0
 
     def reset(self, env) -> None:
-        self._prev_pos = {name: self._item_pos(env, name) for name in ITEMS}
+        self._prev_pos = {name: self._item_pos(env, name) for name in scene_items(env)}
         self._hold = 0
 
     def update(self, env) -> SuccessStatus:
         items = {}
-        for name in ITEMS:
+        for name in self._prev_pos:
             pos = self._item_pos(env, name)
             speed = np.linalg.norm(pos - self._prev_pos[name]) / self.control_dt
             self._prev_pos[name] = pos

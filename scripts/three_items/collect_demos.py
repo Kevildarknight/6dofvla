@@ -7,7 +7,8 @@ strict success check fires. Only successful episodes are saved.
 
 Variety between episodes: the layout, up to +-1 cm of waypoint noise, a random
 pick order, and the instruction (the evaluation sentence for half of the
-episodes, otherwise one of LANGUAGE_VARIANTS).
+episodes, otherwise one of LANGUAGE_VARIANTS). Task 3 (one butter) always uses
+its own sentence.
 
 With --noise (DART), the robot executes the expert's action plus noise, while
 the dataset stores the expert's clean action for the state the robot is in.
@@ -138,7 +139,9 @@ def main():
         expert.reset(env.sim_env)
         noise.reset()
         pushed = 0
-        task = str(rng.choice(LANGUAGE_VARIANTS)) if rng.random() < args.variant_prob else LANGUAGE
+        task = env.task_description
+        if task == LANGUAGE and rng.random() < args.variant_prob:
+            task = str(rng.choice(LANGUAGE_VARIANTS))
         success = False
         for _ in range(EPISODE_LENGTH):
             segment = expert.segment

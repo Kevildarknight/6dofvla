@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Stage 6: evaluate a policy on the three-butter task with lerobot-eval.
-# Usage: [TASK_ID=0|1|2] bash scripts/three_items/eval.sh [policy_path] [n_episodes] [output_dir]
-#   TASK_ID 0: fixed layout (default), 1: training layouts, 2: held-out layouts.
+# Usage: [TASK_ID=0|1|2|3] bash scripts/three_items/eval.sh [policy_path] [n_episodes] [output_dir] [extra lerobot-eval args...]
+#   TASK_ID 0: fixed layout (default), 1: training layouts, 2: held-out layouts,
+#   3: one butter at a fixed layout. Example extra arg: --env.episode_length=400
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
@@ -20,7 +21,8 @@ task_id="${TASK_ID:-0}"
   --eval.batch_size=1 \
   --eval.n_episodes="$n_episodes" \
   --seed=1000 \
-  --output_dir="$output_dir"
+  --output_dir="$output_dir" \
+  "${@:4}"
 
 .venv/bin/python - "$output_dir" "$task_id" <<'PY'
 import json

@@ -26,7 +26,7 @@ import math
 import numpy as np
 import robosuite.utils.transform_utils as T
 
-from .task import BASKET, ITEMS
+from .task import BASKET, ITEMS, scene_items
 
 POS_SCALE = 0.05  # metres per action unit (robosuite OSC_POSE output_max)
 ROT_SCALE = 0.5  # radians per action unit
@@ -87,7 +87,8 @@ class ScriptedThreeItemsExpert:
     def reset(self, env) -> None:
         # The butters look identical, so any pick order is valid; shuffling it
         # keeps a policy from tying "first" to one particular ID or position.
-        self.order = tuple(self.rng.permutation(ITEMS)) if self.shuffle_order else ITEMS
+        items = scene_items(env)
+        self.order = tuple(self.rng.permutation(items)) if self.shuffle_order else items
         self.plan = _plan(self.order)
         self.index = 0
         self.steps_in_segment = 0

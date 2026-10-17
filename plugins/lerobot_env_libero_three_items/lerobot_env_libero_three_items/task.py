@@ -4,12 +4,17 @@ The BDDL file declares the scene (robot arena, basket, item_1..item_3) and the
 coarse placement regions. LIBERO's sampler still jitters objects inside those
 regions, so exact layouts are pinned by saved MuJoCo states that resets restore.
 
-The suite has three task IDs that share the scene and instruction and differ
-only in their initial states:
+Task IDs 0-2 share the three-butter scene and instruction and differ only in
+their initial states:
 
     0  fixed    one hand-picked layout (the original demo)
     1  train    randomly sampled layouts for demonstrations
     2  heldout  separately sampled layouts, used only for evaluation
+
+Task 3 is a reduced version for debugging the pipeline: one butter, one fixed
+layout, and LIBERO Object's own sentence for picking up the butter.
+
+    3  single   item_1 and the basket only
 
 Within a task, successive resets cycle through its saved states.
 """
@@ -44,6 +49,9 @@ LAYOUT_XY = {
     "item_3": (-0.15, 0.03),
     BASKET: (0.00, 0.25),
 }
+SINGLE_TASK_NAME = "one_butter_basket"
+SINGLE_LANGUAGE = "pick up the butter and place it in the basket"
+SINGLE_LAYOUT_XY = {"item_1": LAYOUT_XY["item_1"], BASKET: LAYOUT_XY[BASKET]}
 # Orientation comes from LIBERO's sampler, which places each butter flat with its
 # 4 cm side along world y: the axis the Panda fingers close along when the
 # gripper points straight down.
@@ -64,24 +72,28 @@ class Task(NamedTuple):
     init_states_file: str
 
 
-TASK_FIXED, TASK_TRAIN, TASK_HELDOUT = 0, 1, 2
-SPLITS = {"fixed": TASK_FIXED, "train": TASK_TRAIN, "heldout": TASK_HELDOUT}
+TASK_FIXED, TASK_TRAIN, TASK_HELDOUT, TASK_SINGLE = 0, 1, 2, 3
+SPLITS = {"fixed": TASK_FIXED, "train": TASK_TRAIN, "heldout": TASK_HELDOUT, "single": TASK_SINGLE}
 # Number of layouts and sampling seed per random split. Different seeds keep
 # the held-out layouts independent of the training ones.
 RANDOM_SPLITS = {"train": (40, 0), "heldout": (10, 1)}
 
 
 def _task(split: str) -> Task:
-    stem = TASK_NAME if split == "fixed" else f"{TASK_NAME}_{split}"
+    if split == "single":
+        stem, scene, language = SINGLE_TASK_NAME, SINGLE_TASK_NAME, SINGLE_LANGUAGE
+    else:
+        stem = TASK_NAME if split == "fixed" else f"{TASK_NAME}_{split}"
+        scene, language = TASK_NAME, LANGUAGE
     # LeRobot joins problem_folder onto LIBERO's bddl/init-state roots. Joining an
     # absolute path replaces the root, so the files are read from this package
     # instead of the installed LIBERO tree.
     return Task(
         name=stem,
-        language=LANGUAGE,
+        language=language,
         problem="Libero",
         problem_folder=str(ASSETS_DIR),
-        bddl_file=f"{TASK_NAME}.bddl",
+        bddl_file=f"{scene}.bddl",
         init_states_file=f"{stem}.pruned_init",
     )
 
@@ -102,8 +114,13 @@ class ThreeItemsSuite:
         return self.tasks[i]
 
 
-def bddl_path() -> Path:
-    return ASSETS_DIR / f"{TASK_NAME}.bddl"
+def bddl_path(split: str = "fixed") -> Path:
+    return ASSETS_DIR / TASKS[SPLITS[split]].bddl_file
+
+
+def scene_items(sim_env) -> tuple[str, ...]:
+    """The item_* objects present in a built scene (three butters, or one in task 3)."""
+    return tuple(sorted(name for name in sim_env.objects_dict if name.startswith("item_")))
 
 
 def init_states_path(split: str) -> Path:

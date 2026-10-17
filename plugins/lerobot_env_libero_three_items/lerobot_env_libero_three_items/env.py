@@ -14,7 +14,7 @@ import numpy as np
 from lerobot.envs.libero import LiberoEnv
 
 from .success import BasketSuccessChecker, SuccessStatus
-from .task import ITEMS, SUITE_NAME, ThreeItemsSuite
+from .task import SUITE_NAME, ThreeItemsSuite
 
 
 class ThreeItemsLiberoEnv(LiberoEnv):
@@ -45,8 +45,8 @@ class ThreeItemsLiberoEnv(LiberoEnv):
         info["bddl_goal"] = info["is_success"]
         info["is_success"] = status.success
         info["num_items_in_basket"] = status.num_in_basket
-        for name in ITEMS:
-            info[f"{name}_in_basket"] = status.items[name].in_basket
+        for name, item in status.items.items():
+            info[f"{name}_in_basket"] = item.in_basket
         # LIBERO's "done" is its BDDL goal, which fires while the last item is still
         # falling, so only the strict check ends the episode. Time limits are
         # applied by the caller through _max_episode_steps.

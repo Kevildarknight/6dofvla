@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
-from .task import BASKET, ITEMS, LAYOUT_XY
+from .task import BASKET, ITEMS, LAYOUT_XY, SINGLE_LAYOUT_XY
 
 # Sampling ranges in world metres. The robot base is at x ~ -0.66, so these
 # stay inside the region the scripted controller reaches with a vertical gripper.
@@ -45,6 +45,7 @@ class Layout:
 
 
 FIXED_LAYOUT = Layout(xy=dict(LAYOUT_XY), item_yaw={name: 0.0 for name in ITEMS})
+SINGLE_LAYOUT = Layout(xy=dict(SINGLE_LAYOUT_XY), item_yaw={"item_1": 0.0})
 
 
 def is_valid(layout: Layout) -> bool:

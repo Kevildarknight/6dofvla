@@ -4,6 +4,7 @@ Splits (task IDs of --env.type=libero_three_items):
   fixed    task 0: the single layout in task.LAYOUT_XY
   train    task 1: randomly sampled layouts for demonstrations
   heldout  task 2: layouts sampled with another seed, for evaluation only
+  single   task 3: one butter and the basket, at the fixed layout's positions
 
 For each layout the script resets the scene, teleports the basket and butters
 into place, lets them settle, and records the MuJoCo state. A layout is kept
@@ -19,7 +20,7 @@ import numpy as np
 import torch
 from libero.libero.envs import OffScreenRenderEnv
 from lerobot.envs.libero import get_libero_dummy_action
-from lerobot_env_libero_three_items.layouts import FIXED_LAYOUT, Layout, apply_layout, sample_layout
+from lerobot_env_libero_three_items.layouts import FIXED_LAYOUT, SINGLE_LAYOUT, Layout, apply_layout, sample_layout
 from lerobot_env_libero_three_items.scripted import ScriptedThreeItemsExpert
 from lerobot_env_libero_three_items.success import BasketSuccessChecker
 from lerobot_env_libero_three_items.task import (
@@ -65,8 +66,8 @@ def scripted_success_step(env) -> int | None:
 
 
 def make_split(env, split: str, verify: bool) -> None:
-    if split == "fixed":
-        candidates = iter([FIXED_LAYOUT])
+    if split in ("fixed", "single"):
+        candidates = iter([FIXED_LAYOUT if split == "fixed" else SINGLE_LAYOUT])
         count = 1
     else:
         count, seed = RANDOM_SPLITS[split]
@@ -98,10 +99,11 @@ def main():
     parser.add_argument("--no-verify", action="store_true", help="skip the scripted rollout check")
     args = parser.parse_args()
 
-    env = OffScreenRenderEnv(bddl_file_name=str(bddl_path()), camera_heights=64, camera_widths=64)
     for split in SPLITS if args.split == "all" else [args.split]:
+        # Task 3 has its own scene file, so build an env per split.
+        env = OffScreenRenderEnv(bddl_file_name=str(bddl_path(split)), camera_heights=64, camera_widths=64)
         make_split(env, split, verify=not args.no_verify)
-    env.close()
+        env.close()
 
 
 if __name__ == "__main__":
