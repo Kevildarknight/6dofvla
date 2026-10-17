@@ -32,7 +32,7 @@ import numpy as np
 import torch
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.envs.utils import preprocess_observation
-from lerobot_env_libero_three_items.config import LiberoThreeItemsEnv
+from lerobot_env_libero_three_items.config import LiberoLevelsEnv, LiberoThreeItemsEnv
 from lerobot_env_libero_three_items.env import ThreeItemsLiberoEnv
 from lerobot_env_libero_three_items.scripted import ScriptedThreeItemsExpert
 from lerobot_env_libero_three_items.task import EPISODE_LENGTH, LANGUAGE, LANGUAGE_VARIANTS, SPLITS, TASK_TRAIN
@@ -99,7 +99,13 @@ def main():
     parser.add_argument("--jitter", type=float, default=0.01, help="waypoint noise in metres")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--task-id", type=int, default=TASK_TRAIN, choices=sorted(SPLITS.values()), help=f"layouts: {SPLITS}"
+        "--task-id", type=int, default=TASK_TRAIN, help=f"task id; three-butter suite: {SPLITS}"
+    )
+    parser.add_argument(
+        "--suite",
+        choices=["three_items", "levels"],
+        default="three_items",
+        help="levels: the difficulty-level tasks of --env.type=libero_levels (see levels.py)",
     )
     parser.add_argument("--fixed-order", action="store_true", help="always pick item_1, item_2, item_3")
     parser.add_argument(
@@ -120,7 +126,12 @@ def main():
     dataset = LeRobotDataset.create(
         repo_id=args.repo_id, fps=FPS, features=FEATURES, root=args.root, robot_type="panda", use_videos=True
     )
+    suite_config = LiberoLevelsEnv() if args.suite == "levels" else LiberoThreeItemsEnv()
+    if args.task_id not in suite_config.valid_task_ids().values():
+        raise SystemExit(f"--task-id must be one of {suite_config.valid_task_ids()}")
     env = ThreeItemsLiberoEnv(
+        task_suite=suite_config.make_suite(),
+        task_suite_name=suite_config.task,
         task_id=args.task_id,
         obs_type="pixels_agent_pos",
         observation_height=SIZE,

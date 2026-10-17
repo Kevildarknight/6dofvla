@@ -15,6 +15,7 @@
 !plugins/lerobot_env_libero_three_items/
 !plugins/lerobot_env_libero_three_items/pyproject.toml
 !plugins/lerobot_env_libero_three_items/README.md
+!plugins/lerobot_env_libero_three_items/LEVELS.md
 !plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/
 !plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/*.py
 !plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/
@@ -24,3 +25,13 @@
 !scripts/three_items/
 !scripts/three_items/*.sh
 !scripts/three_items/*.py
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/shapes/
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/shapes/*.xml
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/shapes/*.obj
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/levels/
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/levels/*.bddl
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/levels/*.pruned_init
+!plugins/lerobot_env_libero_three_items/lerobot_env_libero_three_items/assets/levels/check.json
+!scripts/levels/
+!scripts/levels/*.py
+!scripts/levels/*.sh

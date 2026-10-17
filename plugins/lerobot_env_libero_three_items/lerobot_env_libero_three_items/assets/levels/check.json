@@ -1,0 +1,108 @@
+[
+  {
+    "task": "one_object_tray_wide",
+    "language": "put the red cube in the tray",
+    "settle_drift_mm": 0.0,
+    "success_step": 181,
+    "in_container": {
+      "item_1": true
+    }
+  },
+  {
+    "task": "one_object_bin_narrow",
+    "language": "put the red cube in the bin",
+    "settle_drift_mm": 0.0,
+    "success_step": 167,
+    "in_container": {
+      "item_1": true
+    }
+  },
+  {
+    "task": "three_same_tray_wide",
+    "language": "put the three red cubes in the tray",
+    "settle_drift_mm": 0.0,
+    "success_step": 584,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  },
+  {
+    "task": "three_same_bin_narrow",
+    "language": "put the three red cubes in the bin",
+    "settle_drift_mm": 0.0,
+    "success_step": 526,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  },
+  {
+    "task": "three_shapes_tray_wide",
+    "language": "put the cube, the cylinder and the triangle in the tray",
+    "settle_drift_mm": 3.17,
+    "success_step": 586,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  },
+  {
+    "task": "three_shapes_bin_narrow",
+    "language": "put the cube, the cylinder and the triangle in the bin",
+    "settle_drift_mm": 3.17,
+    "success_step": 528,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  },
+  {
+    "task": "three_sizes_tray_wide",
+    "language": "put the small, the medium and the large cylinder in the tray",
+    "settle_drift_mm": 0.0,
+    "success_step": 585,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  },
+  {
+    "task": "three_sizes_bin_narrow",
+    "language": "put the small, the medium and the large cylinder in the bin",
+    "settle_drift_mm": 0.0,
+    "success_step": 530,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  },
+  {
+    "task": "colors_sizes_tray_wide",
+    "language": "put the red, the green and the blue cylinder in the tray",
+    "settle_drift_mm": 0.0,
+    "success_step": 585,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  },
+  {
+    "task": "colors_sizes_bin_narrow",
+    "language": "put the red, the green and the blue cylinder in the bin",
+    "settle_drift_mm": 0.0,
+    "success_step": 530,
+    "in_container": {
+      "item_1": true,
+      "item_2": true,
+      "item_3": true
+    }
+  }
+]

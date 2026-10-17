@@ -14,4 +14,7 @@ requires-python = ">=3.12"
 packages = ["lerobot_env_libero_three_items"]
 
 [tool.setuptools.package-data]
-lerobot_env_libero_three_items = ["assets/*.bddl", "assets/*.pruned_init", "assets/*.layouts.json"]
+lerobot_env_libero_three_items = [
+  "assets/*.bddl", "assets/*.pruned_init", "assets/*.layouts.json",
+  "assets/shapes/*.xml", "assets/shapes/*.obj", "assets/levels/*.bddl", "assets/levels/*.pruned_init", "assets/levels/*.json",
+]
