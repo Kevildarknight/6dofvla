@@ -17,14 +17,24 @@ SmolVLA 0.45B, fine-tuned and evaluated in LIBERO (MuJoCo, robosuite) with a sim
 
 Pinned versions: LeRobot v0.6.1 (commit 7e241bd), Python 3.12, PyTorch 2.7.1, transformers 5.5.4, hf-libero 0.1.4, MuJoCo 3.8.1. Policy HuggingFaceVLA/smolvla_libero at revision 6721902. LIBERO interface: two 256×256 cameras (rotated 180° by the env), 8-D state, 7-D action (end-effector delta and gripper), 20 Hz.
 
-## Lost with the WSL install
+## Lost with the WSL install, and what was saved
 
-Everything ignored by .gitignore was only on the WSL disk and is gone unless it was copied to D: first:
+Everything ignored by .gitignore was only on the WSL disk. Three folders were copied to the Windows drive "New Volume" (D:) under smolvla_backup/ before WSL was removed:
 
-- data/three_items_demos (100 demos, about 1.7 h to recollect) and the DART variant;
-- data/libero_basket_subset and data/three_items_mix (about 30 min to rebuild);
-- outputs/, including the three_fixed_train_20k run and its checkpoint 040000 (most of a day on the RTX 3050 Ti);
+| Backup folder | Restore to | Content |
+| --- | --- | --- |
+| 040000 | outputs/three_fixed_train_20k/checkpoints/040000 | Checkpoint 40,000 of the three_fixed_train_20k run |
+| three_fixed_demos_dart | data/three_fixed_demos_dart | DART demos on the fixed layout |
+| three_random_dart200 | data/three_random_dart200 | 200 DART demos on random layouts |
+
+Lost, to be rebuilt if needed:
+
+- data/three_items_demos (100 demos, about 1.7 h to recollect);
+- data/libero_basket_subset and the mixed datasets (about 30 min to rebuild with prepare_libero_subset.sh and build_mix.sh);
+- other runs under outputs/ and their logs;
 - .venv, lerobot/, models/, .libero/ (recreated by scripts/install.sh).
+
+The exact training command and dataset of three_fixed_train_20k are not recorded here; read train_config.json inside the restored checkpoint (pretrained_model/train_config.json or training_state/).
 
 Checkpoints were trained with `push_to_hub=false`, so none are on the Hugging Face Hub. From now on, push important checkpoints to the Hub or copy them off the machine.
 
