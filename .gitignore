@@ -3,6 +3,7 @@
 !.gitignore
 !README.md
 !AGENTS.md
+!CLAUDE.md
 !scripts/
 !scripts/install.sh
 !scripts/run_orange_juice.sh
