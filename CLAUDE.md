@@ -40,14 +40,12 @@ Checkpoints were trained with `push_to_hub=false`, so none are on the Hugging Fa
 
 ## Machine
 
-Laptop with an Intel i5-12450H and an RTX 3050 Ti Laptop GPU (4 GiB). It now dual-boots Windows and **Ubuntu 22.04**; WSL is no longer used. At 4 GiB, batch size 4 is the practical training limit.
+Dell G15 5511 laptop with an Intel i5-12450H and an RTX 3050 Ti Laptop GPU (4 GiB). It now dual-boots Windows and **Ubuntu 24.04 LTS**; WSL is no longer used. At 4 GiB, batch size 4 is the practical training limit.
 
-Ubuntu 22.04 ships Python 3.10, but scripts/install.sh requires python3.12:
+Ubuntu 24.04 is the system README.md was tested on, and it ships Python 3.12, which scripts/install.sh requires. Only the venv and build packages are missing on a fresh install:
 
 ```bash
-sudo add-apt-repository ppa:deadsnakes/ppa -y
-sudo apt update
-sudo apt install -y python3.12 python3.12-venv python3.12-dev
+sudo apt install -y python3.12-venv python3.12-dev git
 ```
 
 ## Moving to Panthera-HT
@@ -56,10 +54,10 @@ The arm is now the [Panthera-HT](https://github.com/HighTorque-Robotics/Panthera
 
 | Repository | Use here | Environment |
 | --- | --- | --- |
-| [Panthera-HT_SDK](https://github.com/HighTorque-Robotics/Panthera-HT_SDK) | Motor control, kinematics (Pinocchio), URDF, robot_param/Follower.yaml | Prebuilt `hightorque_robot` 1.2.0 wheels for Python 3.9–3.12 on x86-64, built on Ubuntu 22 |
+| [Panthera-HT_SDK](https://github.com/HighTorque-Robotics/Panthera-HT_SDK) | Motor control, kinematics (Pinocchio), URDF, robot_param/Follower.yaml | Prebuilt `hightorque_robot` 1.2.0 wheels for Python 3.9–3.12 on x86-64, built on Ubuntu 22; if the wheel fails on 24.04, build from source as its README describes |
 | [Panthera-HT_lerobot](https://github.com/HighTorque-Robotics/Panthera-HT_lerobot) | `panthera_follower`, `panthera_leader`, `panthera_dual_follower` robots for lerobot-record and policy rollout | Python 3.10, its own vendored LeRobot **0.4.3**; expects Panthera-HT_SDK as a sibling directory |
 | [Panthera-HT_RoboTwin](https://github.com/HighTorque-Robotics/Panthera-HT_RoboTwin) | Simulation (SAPIEN, Vulkan), CuRobo planning, expert data collection; single-arm mode for 32 tasks (`<task>_panthera_single`) | Python 3.10.20, PyTorch 2.7.1 + CUDA 12.8, CuRobo 0.7.8 (needs nvcc 12.8); a separate Python 3.11 env for data conversion |
-| [Panthera-HT-ROS2](https://github.com/HighTorque-Robotics/Panthera-HT-ROS2) | MoveIt, ros2_control, Gazebo Sim | ROS 2 Humble on Ubuntu 22.04 |
+| [Panthera-HT-ROS2](https://github.com/HighTorque-Robotics/Panthera-HT-ROS2) | MoveIt, ros2_control, Gazebo Sim, direct SDK control node | Branches humble (Ubuntu 22.04), **jazzy (Ubuntu 24.04, use this one)** and Lyrical. Clone with `-b jazzy`; the default branch is humble |
 
 ### Panthera interface
 
@@ -82,7 +80,7 @@ The arm is now the [Panthera-HT](https://github.com/HighTorque-Robotics/Panthera
 
 ### Plan
 
-1. Install the Ubuntu 22.04 base: NVIDIA driver, Vulkan, python3.12, then scripts/install.sh and scripts/three_items/install.sh to confirm the LIBERO pipeline still works.
+1. Install the Ubuntu 24.04 base: NVIDIA driver, Vulkan, python3.12-venv, then scripts/install.sh and scripts/three_items/install.sh to confirm the LIBERO pipeline still works.
 2. Install Panthera-HT_RoboTwin in its own conda env and collect one single-arm task (for example move_pillbottle_pad_panthera_single). Check the video and HDF5.
 3. Write an HDF5 → LeRobot dataset converter for SmolVLA (single arm, 7-D, 30 fps, wrist and head cameras, task instruction).
 4. Fine-tune SmolVLA on the converted data and evaluate in RoboTwin with policy/eval.py or a SmolVLA adapter.
