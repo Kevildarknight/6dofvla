@@ -34,7 +34,7 @@ Lost, to be rebuilt if needed:
 - other runs under outputs/ and their logs;
 - .venv, lerobot/, models/, .libero/ (recreated by scripts/install.sh).
 
-The exact training command and dataset of three_fixed_train_20k are not recorded here; read train_config.json inside the restored checkpoint (pretrained_model/train_config.json or training_state/).
+All three were restored on the Ubuntu machine on 22 Oct 2026. From pretrained_model/train_config.json, checkpoint 040000 was trained on **data/three_fixed_demos_dart only** (50 episodes, 30,721 frames, fixed layout, no LIBERO mix), batch size 4, seed 1000: a 20k run resumed to 40,000 steps. Evaluate it with TASK_ID=0. data/three_random_dart200 has 200 episodes and 123,022 frames on random layouts and has not been trained on in a surviving run.
 
 Checkpoints were trained with `push_to_hub=false`, so none are on the Hugging Face Hub. From now on, push important checkpoints to the Hub or copy them off the machine.
 
