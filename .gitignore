@@ -25,3 +25,9 @@
 !scripts/three_items/
 !scripts/three_items/*.sh
 !scripts/three_items/*.py
+
+# RoboTwin (Panthera-HT) data collection and conversion to LeRobot.
+!scripts/robotwin/
+!scripts/robotwin/*.sh
+!scripts/robotwin/*.py
+!scripts/robotwin/*.yml
