@@ -93,6 +93,18 @@ Give the source as an absolute path, because convert.sh runs from the repository
 | `observation.images.wrist` | wrist camera, 360×640 |
 | `task` | one of the episode's "seen" instructions |
 
+## 6. Fine-tune SmolVLA
+
+```bash
+cd ~/6dofvla
+bash scripts/robotwin/train.sh                         # 20,000 steps, batch 4, into outputs/robotwin_train_<time>/
+STEPS=200 bash scripts/robotwin/train.sh outputs/smoke  # quick check that everything loads
+```
+
+Training starts from `lerobot/smolvla_base`, which the script downloads to `models/smolvla_base` at a pinned revision. It does not start from the LIBERO checkpoint, because Panthera actions are absolute joint positions, while LIBERO actions are end-effector deltas. Only the action expert and the state projection are trained; the vision-language backbone stays frozen. The base model names its cameras `camera1`..`camera3`, so `--rename_map` feeds head to camera1 and wrist to camera2, and camera3 is left empty. **At inference, rename the camera keys the same way.**
+
+On an RTX 3050 Ti (4 GiB) this runs at about 1.9 steps/s and uses 2.05 GB of GPU memory, so 20,000 steps take about 3 hours. `DATASET`, `BATCH_SIZE`, `STEPS` and `SAVE_FREQ` override the defaults, and extra arguments are passed to lerobot-train. The checkpoint's config.json still lists the base model's input shapes (6-D state, 256×256 cameras). This does not matter: SmolVLA pads state to 32 values and resizes images to 512, and the normalisation statistics saved with the checkpoint are 7-D, computed from the dataset.
+
 ## Things to know
 
 - **Frame rate.** RoboTwin's planner fixes the physics step at 1/250 s, so `save_freq` must be a whole number of steps. `save_freq: 8` saves a frame every 32 ms (31.25 Hz); the dataset is labelled 30 fps. SmolVLA indexes action chunks by frame, so the label does not change what the policy learns.
