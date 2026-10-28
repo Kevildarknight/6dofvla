@@ -31,3 +31,4 @@
 !scripts/robotwin/*.sh
 !scripts/robotwin/*.py
 !scripts/robotwin/*.yml
+!scripts/robotwin/README.md
