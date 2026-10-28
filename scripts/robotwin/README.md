@@ -105,6 +105,25 @@ Training starts from `lerobot/smolvla_base`, which the script downloads to `mode
 
 On an RTX 3050 Ti (4 GiB) this runs at about 1.9 steps/s and uses 2.05 GB of GPU memory, so 20,000 steps take about 3 hours. `DATASET`, `BATCH_SIZE`, `STEPS` and `SAVE_FREQ` override the defaults, and extra arguments are passed to lerobot-train. The checkpoint's config.json still lists the base model's input shapes (6-D state, 256×256 cameras). This does not matter: SmolVLA pads state to 32 values and resizes images to 512, and the normalisation statistics saved with the checkpoint are 7-D, computed from the dataset.
 
+## 7. Evaluate in RoboTwin
+
+```bash
+cd ~/6dofvla
+bash scripts/robotwin/eval.sh outputs/<run>/checkpoints/020000/pretrained_model 20          # 20 episodes, seen instructions
+bash scripts/robotwin/eval.sh outputs/<run>/checkpoints/020000/pretrained_model 20 unseen   # unseen instructions
+```
+
+The evaluation uses RoboTwin's own evaluator and success check. RoboTwin runs on Python 3.10 and LeRobot 0.6.1 needs 3.12, so it runs as two processes:
+
+- `policy_server.py` loads the checkpoint in `.venv` and answers on a local socket.
+- RoboTwin's `script/eval_policy.py` runs in the `RoboTwin` env and loads `smolvla_panthera.py` as its policy. That module sends the head and wrist images, the 7-D state and the instruction, then executes the returned actions.
+
+Test seeds start at 100000 × (SEED + 1), so the layouts were never seen in training. Before each episode RoboTwin replays its scripted expert on the seed and skips seeds the expert cannot solve.
+
+Results go to `$ROBOTWIN_DIR/eval_result/<task>/smolvla_panthera/<config>/<run>_<step>/<time>/`, as `_result.txt` (the success rate) plus one head-camera video per episode. Each episode is limited to 400 actions for move_pillbottle_pad. `ACTION_STEPS` (default 10, at most 50) sets how many actions of each predicted chunk run before the policy sees a new observation.
+
+**Do not evaluate while training on a 4 GiB GPU.** The simulator's planner needs about 1 GB. If it runs out of memory, every expert check fails silently and the log only prints `error occurs !`. For a quick check during training, `DEVICE=cpu` keeps the policy server off the GPU. That is slow (about 6.5 s per request), so combine it with `ACTION_STEPS=50`.
+
 ## Things to know
 
 - **Frame rate.** RoboTwin's planner fixes the physics step at 1/250 s, so `save_freq` must be a whole number of steps. `save_freq: 8` saves a frame every 32 ms (31.25 Hz); the dataset is labelled 30 fps. SmolVLA indexes action chunks by frame, so the label does not change what the policy learns.

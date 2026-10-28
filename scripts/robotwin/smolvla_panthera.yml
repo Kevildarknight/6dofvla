@@ -1,0 +1,9 @@
+# RoboTwin deploy config for smolvla_panthera.py; eval.sh fills in the null fields.
+policy_name: smolvla_panthera
+task_name: null
+task_config: null
+ckpt_setting: null
+seed: null
+instruction_type: seen
+
+port: 6010
