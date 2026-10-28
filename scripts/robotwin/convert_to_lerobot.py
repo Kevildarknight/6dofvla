@@ -45,8 +45,10 @@ JOINT_NAMES = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "grip
 
 
 def decode(jpeg_bytes):
-    image = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
-    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # RoboTwin passes the renderer's RGB array to cv2.imencode, which treats it
+    # as BGR; cv2.imdecode undoes that, so the result is already RGB. Swapping
+    # channels here would turn red objects blue.
+    return cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
 
 
 def passed_episodes(src):
