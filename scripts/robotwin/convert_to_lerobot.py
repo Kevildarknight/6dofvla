@@ -21,6 +21,14 @@ motion and the first of the next show the same instant. With
 previous kept one is skipped, which removes those repeats and the still frames
 of fixed delays. Without it, about one frame in six is a repeat.
 
+Episodes collected with dart_collect.py (DART=1 collect.sh) list their
+perturbation frames in dart/episodeN.json. A transition whose next frame lies
+inside a perturbation is dropped, since its action would teach the push itself.
+The episode is split there, so each clean stretch becomes its own LeRobot
+episode and action chunks never span a push; stretches shorter than
+--min-segment frames are left out. The stretch after a push starts at the
+pushed state and shows the expert's recovery, which is what DART is for.
+
 The gripper stays in RoboTwin's 0..1 range. The real arm uses 0..2 (see
 CLAUDE.md); scale at the robot interface, not here, so sim and real data share
 one convention.
@@ -82,6 +90,30 @@ def kept_frames(vector, drop_duplicates):
     return keep
 
 
+def noise_frames(src, episode):
+    path = src / "dart" / f"episode{episode}.json"
+    if not path.exists():
+        return set()
+    spans = json.loads(path.read_text())["noise_frames"]
+    # The first frame of a span is the state before the push; the rest are reached by it.
+    return {t for first, last in spans for t in range(first + 1, last + 1)}
+
+
+def clean_segments(keep, noisy):
+    """Split consecutive (t, t_next) pairs wherever a pair would lead into a noisy frame."""
+    segments, current = [], []
+    for t, t_next in zip(keep[:-1], keep[1:]):
+        if any(i in noisy for i in range(t + 1, t_next + 1)):
+            if current:
+                segments.append(current)
+            current = []
+        else:
+            current.append((t, t_next))
+    if current:
+        segments.append(current)
+    return segments
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("src", type=Path, help="RoboTwin folder data/<task_name>/<task_config>")
@@ -90,6 +122,7 @@ def main():
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--keep-duplicates", dest="drop_duplicates", action="store_false")
     parser.add_argument("--seed", type=int, default=0, help="picks among several seen instructions")
+    parser.add_argument("--min-segment", type=int, default=10, help="shortest clean stretch kept from a DART episode")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
@@ -118,22 +151,30 @@ def main():
             vector = f["joint_action/vector"][:].astype(np.float32)
             keep = kept_frames(vector, args.drop_duplicates)
             images = {key: f[f"observation/{cam}/rgb"] for key, cam in CAMERAS.items()}
-            for t, t_next in zip(keep[:-1], keep[1:]):
-                frame = {key: decode(images[key][t]) for key in CAMERAS}
-                dataset.add_frame(
-                    {**frame, "observation.state": vector[t], "action": vector[t_next], "task": task}
-                )
-        dataset.save_episode()
+            noisy = noise_frames(args.src, episode)
+            segments = clean_segments(keep, noisy)
+            if noisy:
+                segments = [segment for segment in segments if len(segment) >= args.min_segment]
+            for segment in segments:
+                for t, t_next in segment:
+                    frame = {key: decode(images[key][t]) for key in CAMERAS}
+                    dataset.add_frame(
+                        {**frame, "observation.state": vector[t], "action": vector[t_next], "task": task}
+                    )
+                dataset.save_episode()
         dropped_total += len(vector) - len(keep)
+        kept = sum(len(segment) for segment in segments)
+        dart_note = f", {len(segments)} DART segments" if noisy else ""
         print(
-            f"episode {episode}: {len(keep) - 1} frames ({len(vector) - len(keep)} repeats dropped), "
+            f"episode {episode}: {kept} frames ({len(vector) - len(keep)} repeats dropped{dart_note}), "
             f"task '{task}'",
             flush=True,
         )
 
     dataset.finalize()
     print(
-        f"Saved {len(episodes)} episodes, {dataset.meta.total_frames} frames "
+        f"Saved {len(episodes)} RoboTwin episodes as {dataset.meta.total_episodes} LeRobot episodes, "
+        f"{dataset.meta.total_frames} frames "
         f"({dropped_total} repeats dropped) to {root}"
     )
 

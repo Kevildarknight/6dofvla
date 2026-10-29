@@ -75,6 +75,22 @@ The script copies the task config from this folder into RoboTwin's `task_config/
 
 Output: `$ROBOTWIN_DIR/data/move_pillbottle_pad/move_pillbottle_pad_panthera_single_30hz/`, with `data/episodeN.hdf5`, videos under `video/` and `collection_manifest.json`. Watch a few head-camera videos to check that the bottle really ends up on the pad.
 
+### With DART perturbations
+
+A policy trained only on clean expert demos never sees the arm off the expert's path. In closed loop its small errors add up until the grasp misses. Our first model scored 0/20 for this reason, even on the training layouts. DART collection pushes the expert off course and records the recovery:
+
+```bash
+DART=1 bash scripts/robotwin/collect.sh move_pillbottle_pad move_pillbottle_pad_panthera_single_30hz_dart   # 100 episodes
+```
+
+`dart_collect.py` perturbs each unconstrained arm motion with probability `DART_PROB` (default 0.6):
+
+1. The planned path runs for a random 20–80% of its length.
+2. The joints are pushed by Gaussian noise with standard deviation `DART_STD` (default 0.05 rad).
+3. CuRobo replans from there to the original target.
+
+The straight final approach of a grasp is not perturbed. The frames of each push are listed in `dart/episodeN.json` in the output folder. The converter drops transitions that lead into a push and splits the episode there. Each RoboTwin episode becomes several LeRobot episodes, and an action chunk never contains a push.
+
 ## 5. Convert to a LeRobot dataset
 
 ```bash
