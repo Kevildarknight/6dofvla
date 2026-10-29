@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Evaluate a SmolVLA checkpoint in RoboTwin with RoboTwin's own evaluator and success check.
 # Usage: bash scripts/robotwin/eval.sh <pretrained_model dir> [episodes] [seen|unseen]
-# Env overrides: TASK_NAME, TASK_CONFIG, SEED, ACTION_STEPS (actions per request), DEVICE, PORT, ROBOTWIN_DIR.
+# Env overrides: TASK_NAME, TASK_CONFIG, SEED, ACTION_STEPS (actions per request), DEVICE, PORT, ROBOTWIN_DIR,
+# TEXTURES (unseen, the evaluator's default, or seen: the training backgrounds, via eval_seen_textures.py).
+# SEED=-1 starts at seed 0, the same seeds as data collection.
 # Starts policy_server.py in this repository's .venv, then runs RoboTwin's script/eval_policy.py
 # in the RoboTwin conda env with smolvla_panthera.py as the policy. Test seeds start at
 # 100000 * (SEED + 1), so they never overlap the collection seeds.
@@ -20,6 +22,15 @@ task_config="${TASK_CONFIG:-move_pillbottle_pad_panthera_single_30hz}"
 port="${PORT:-6010}"
 # e.g. outputs/robotwin_pillbottle_20k/checkpoints/020000/pretrained_model -> robotwin_pillbottle_20k_020000
 ckpt_setting="$(basename "$(dirname "$(dirname "$(dirname "$checkpoint")")")")_$(basename "$(dirname "$checkpoint")")"
+textures="${TEXTURES:-unseen}"
+evaluator=script/eval_policy.py
+if [[ "$textures" == seen ]]; then
+  evaluator="$here/eval_seen_textures.py"
+  ckpt_setting="${ckpt_setting}_seen-textures"
+fi
+if [[ "${SEED:-0}" != 0 ]]; then
+  ckpt_setting="${ckpt_setting}_seed${SEED}"
+fi
 
 server_log="$(mktemp -t smolvla_server.XXXXXX.log)"
 device="${DEVICE:-cuda}"
@@ -46,7 +57,7 @@ echo "Policy server ready (log: $server_log)"
 cp "$here/$task_config.yml" "$ROBOTWIN_DIR/task_config/$task_config.yml"
 cd "$ROBOTWIN_DIR"
 PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" conda run --no-capture-output -n RoboTwin \
-  python -u script/eval_policy.py --config "$here/smolvla_panthera.yml" --overrides \
+  python -u "$evaluator" --config "$here/smolvla_panthera.yml" --overrides \
   --task_name "$task_name" \
   --task_config "$task_config" \
   --ckpt_setting "$ckpt_setting" \
