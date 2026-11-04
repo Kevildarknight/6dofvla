@@ -140,6 +140,22 @@ Results go to `$ROBOTWIN_DIR/eval_result/<task>/smolvla_panthera/<config>/<run>_
 
 **Do not evaluate while training on a 4 GiB GPU.** The simulator's planner needs about 1 GB. If it runs out of memory, every expert check fails silently and the log only prints `error occurs !`. For a quick check during training, `DEVICE=cpu` keeps the policy server off the GPU. That is slow (about 6.5 s per request), so combine it with `ACTION_STEPS=50`.
 
+## 8. ACT baseline
+
+RoboTwin's ACT is a check that a task can be learned from the collected data at all. If ACT succeeds where SmolVLA fails, the problem lies in the SmolVLA setup; if ACT fails too, the data or the task is the problem. RoboTwin's own ACT scripts expect two arms (14-D, three cameras), so these wrappers run its unchanged `policy/ACT` code on single-arm data:
+
+```bash
+cd ~/6dofvla
+.venv/bin/python scripts/robotwin/act_convert.py \
+  ~/panthera/Panthera-HT_RoboTwin/RoboTwin/data/move_pillbottle_pad/move_pillbottle_pad_panthera_single_30hz
+bash scripts/robotwin/act_train.sh data/act_move_pillbottle_pad_panthera_single_30hz outputs/act_pillbottle_clean50
+bash scripts/robotwin/act_eval.sh outputs/act_pillbottle_clean50 20
+```
+
+- `act_convert.py` keeps the same frames as the LeRobot converter (repeats dropped, DART episodes split around each push), so both policies learn from the same (state, action) pairs. Both cameras are resized to 240×320; ACT places the cameras side by side, so they must share one size. 50 demos take 3.2 GB.
+- `act_train.sh` uses the hyperparameters of RoboTwin's `policy/ACT/train.sh` (chunk 50, batch 8, 6000 epochs). It holds out 20% of the episodes for validation and saves the lowest-validation-loss weights as `policy_best.ckpt`. On the RTX 3050 Ti it needs 2.7 GB and about 4 hours.
+- `act_eval.sh` runs RoboTwin's evaluator with `act_panthera.py` as the policy, with temporal aggregation (a new chunk every step, averaged with the earlier ones). `SEED` and `TEXTURES` work as in eval.sh, and `CHECKPOINT` picks another `.ckpt` file. Results go to `eval_result/<task>/act_panthera/<config>/<checkpoint dir>_<ckpt>/`.
+
 ## Things to know
 
 - **Frame rate.** RoboTwin's planner fixes the physics step at 1/250 s, so `save_freq` must be a whole number of steps. `save_freq: 8` saves a frame every 32 ms (31.25 Hz); the dataset is labelled 30 fps. SmolVLA indexes action chunks by frame, so the label does not change what the policy learns.

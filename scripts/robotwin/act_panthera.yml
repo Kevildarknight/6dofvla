@@ -1,0 +1,32 @@
+# RoboTwin deploy config for act_panthera.py; act_eval.sh fills in the null fields.
+# Model arguments match act_train.sh and RoboTwin's policy/ACT/deploy_policy.yml.
+policy_name: act_panthera
+task_name: null
+task_config: null
+ckpt_setting: null
+ckpt_dir: null
+seed: null
+instruction_type: seen
+
+action_dim: 7
+kl_weight: 10.0
+chunk_size: 50
+hidden_dim: 512
+dim_feedforward: 3200
+temporal_agg: true
+device: cuda:0
+checkpoint_name: policy_best.ckpt
+policy_class: ACT
+
+position_embedding: sine
+lr_backbone: 0.00001
+weight_decay: 0.0001
+lr: 0.00001
+masks: false
+dilation: false
+backbone: resnet18
+nheads: 8
+enc_layers: 4
+dec_layers: 7
+pre_norm: false
+dropout: 0.1
