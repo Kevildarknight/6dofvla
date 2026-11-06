@@ -2,6 +2,7 @@
 # Fine-tune SmolVLA base on a converted RoboTwin Panthera dataset.
 # Usage: [DATASET=robotwin_<config>] bash scripts/robotwin/train.sh [output_dir] [extra lerobot-train args...]
 # DATASET defaults to robotwin_move_pillbottle_pad_panthera_single_30hz (convert.sh output under data/).
+# UNFREEZE_VISION_LAYERS=N also trains the last N vision encoder layers (train_vision.py).
 set -euo pipefail
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
 
@@ -26,7 +27,11 @@ fi
 # camera1..camera3; head and wrist are mapped to the first two and camera3 is
 # left out. Normalisation statistics come from the new dataset.
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-.venv/bin/lerobot-train \
+trainer=(.venv/bin/lerobot-train)
+if [[ -n "${UNFREEZE_VISION_LAYERS:-}" ]]; then
+  trainer=(.venv/bin/python scripts/robotwin/train_vision.py)
+fi
+"${trainer[@]}" \
   --policy.path=models/smolvla_base \
   --policy.device=cuda \
   --policy.push_to_hub=false \
