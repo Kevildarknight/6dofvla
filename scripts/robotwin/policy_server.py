@@ -12,6 +12,12 @@ Images are uint8 RGB, height x width x 3, as RoboTwin renders them. The reply is
 predicted chunk, unnormalised, in the dataset's units (joint radians, gripper
 0..1). The checkpoint's preprocessor renames head and wrist to camera1 and
 camera2, as in training.
+
+With --temporal-ensemble COEFF, every request predicts a full chunk and the
+reply is one action: the weighted average of what all chunks still in range
+predict for this step, oldest weighted most (LeRobot's ACTTemporalEnsembler, as
+RoboTwin's ACT evaluation does). The client sends {"reset": True} before each
+episode, which drops the earlier chunks.
 """
 
 import argparse
@@ -19,6 +25,7 @@ from multiprocessing.connection import Listener
 
 import numpy as np
 import torch
+from lerobot.policies.act.modeling_act import ACTTemporalEnsembler
 from lerobot.policies.factory import make_pre_post_processors
 from lerobot.policies.smolvla.modeling_smolvla import SmolVLAPolicy
 
@@ -37,6 +44,8 @@ def main():
     parser.add_argument("--port", type=int, default=6010)
     parser.add_argument("--action-steps", type=int, default=10, help="actions returned per request")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--temporal-ensemble", type=float, default=None, metavar="COEFF",
+                        help="average overlapping chunks and return one action per request (ACT uses 0.01)")
     args = parser.parse_args()
 
     policy = SmolVLAPolicy.from_pretrained(args.checkpoint)
@@ -50,6 +59,9 @@ def main():
     )
     if args.action_steps > policy.config.chunk_size:
         raise SystemExit(f"--action-steps must be at most the chunk size, {policy.config.chunk_size}")
+    ensembler = None
+    if args.temporal_ensemble is not None:
+        ensembler = ACTTemporalEnsembler(args.temporal_ensemble, policy.config.chunk_size)
 
     with Listener(("localhost", args.port), authkey=AUTHKEY) as listener:
         print(f"SmolVLA server ready on port {args.port}", flush=True)
@@ -62,6 +74,11 @@ def main():
                     except EOFError:
                         print("evaluator disconnected", flush=True)
                         break
+                    if request.get("reset"):
+                        if ensembler is not None:
+                            ensembler.reset()
+                        connection.send({"ok": True})
+                        continue
                     frame = {
                         "observation.images.head": to_image(request["head"]),
                         "observation.images.wrist": to_image(request["wrist"]),
@@ -69,8 +86,11 @@ def main():
                         "task": request["task"],
                     }
                     with torch.inference_mode():
-                        chunk = policy.predict_action_chunk(preprocessor(frame))
-                        actions = postprocessor(chunk)[0, : args.action_steps]
+                        chunk = postprocessor(policy.predict_action_chunk(preprocessor(frame)))
+                        if ensembler is not None:
+                            actions = ensembler.update(chunk)  # [1, action_dim]
+                        else:
+                            actions = chunk[0, : args.action_steps]
                     connection.send({"actions": actions.cpu().numpy().astype(float).tolist()})
 
 

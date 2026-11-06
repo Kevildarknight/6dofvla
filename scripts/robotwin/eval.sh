@@ -4,6 +4,8 @@
 # Env overrides: TASK_NAME, TASK_CONFIG, SEED, ACTION_STEPS (actions per request), DEVICE, PORT, ROBOTWIN_DIR,
 # TEXTURES (unseen, the evaluator's default, or seen: the training backgrounds, via eval_seen_textures.py).
 # SEED=-1 starts at seed 0, the same seeds as data collection.
+# TEMPORAL_ENSEMBLE=0.01 queries the policy every step and averages overlapping chunks, as
+# RoboTwin's ACT evaluation does (ACTION_STEPS is then ignored).
 # Starts policy_server.py in this repository's .venv, then runs RoboTwin's script/eval_policy.py
 # in the RoboTwin conda env with smolvla_panthera.py as the policy. Test seeds start at
 # 100000 * (SEED + 1), so they never overlap the collection seeds.
@@ -31,6 +33,11 @@ fi
 if [[ "${SEED:-0}" != 0 ]]; then
   ckpt_setting="${ckpt_setting}_seed${SEED}"
 fi
+if [[ -n "${TEMPORAL_ENSEMBLE:-}" ]]; then
+  ckpt_setting="${ckpt_setting}_te${TEMPORAL_ENSEMBLE}"
+elif [[ "${ACTION_STEPS:-10}" != 10 ]]; then
+  ckpt_setting="${ckpt_setting}_steps${ACTION_STEPS}"
+fi
 
 server_log="$(mktemp -t smolvla_server.XXXXXX.log)"
 device="${DEVICE:-cuda}"
@@ -41,7 +48,8 @@ if [[ "$device" == cpu ]]; then
   server_env=(CUDA_VISIBLE_DEVICES=)
 fi
 env "${server_env[@]}" "$repo_root/.venv/bin/python" "$here/policy_server.py" "$checkpoint" --port "$port" \
-  --action-steps "${ACTION_STEPS:-10}" --device "$device" > "$server_log" 2>&1 &
+  --action-steps "${ACTION_STEPS:-10}" --device "$device" \
+  ${TEMPORAL_ENSEMBLE:+--temporal-ensemble "$TEMPORAL_ENSEMBLE"} > "$server_log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 until grep -q "server ready" "$server_log"; do

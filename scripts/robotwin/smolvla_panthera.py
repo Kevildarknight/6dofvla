@@ -38,6 +38,10 @@ class SmolVLAClient:
         )
         return np.asarray(self.connection.recv()["actions"])
 
+    def reset(self):
+        self.connection.send({"reset": True})
+        self.connection.recv()
+
 
 def get_model(usr_args):
     return SmolVLAClient(int(usr_args.get("port", 6010)))
@@ -53,4 +57,4 @@ def eval(TASK_ENV, model, observation):
 
 
 def reset_model(model):
-    pass  # the server keeps no state between requests
+    model.reset()  # clears the server's temporal ensemble, if one is used
