@@ -75,6 +75,22 @@ The script copies the task config from this folder into RoboTwin's `task_config/
 
 Output: `$ROBOTWIN_DIR/data/move_pillbottle_pad/move_pillbottle_pad_panthera_single_30hz/`, with `data/episodeN.hdf5`, videos under `video/` and `collection_manifest.json`. Watch a few head-camera videos to check that the bottle really ends up on the pad.
 
+### With DART perturbations
+
+A policy trained only on clean expert demos never sees the arm off the expert's path. In closed loop its small errors add up until the grasp misses. Our first model scored 0/20 for this reason, even on the training layouts. DART collection pushes the expert off course and records the recovery:
+
+```bash
+DART=1 bash scripts/robotwin/collect.sh move_pillbottle_pad move_pillbottle_pad_panthera_single_30hz_dart   # 100 episodes
+```
+
+`dart_collect.py` perturbs each unconstrained arm motion with probability `DART_PROB` (default 0.6):
+
+1. The planned path runs for a random 20–80% of its length.
+2. The joints are pushed by Gaussian noise with standard deviation `DART_STD` (default 0.05 rad).
+3. CuRobo replans from there to the original target.
+
+The straight final approach of a grasp is not perturbed. The frames of each push are listed in `dart/episodeN.json` in the output folder. The converter drops transitions that lead into a push and splits the episode there. Each RoboTwin episode becomes several LeRobot episodes, and an action chunk never contains a push.
+
 ## 5. Convert to a LeRobot dataset
 
 ```bash
@@ -92,6 +108,53 @@ Give the source as an absolute path, because convert.sh runs from the repository
 | `observation.images.head` | head camera, 240×320 |
 | `observation.images.wrist` | wrist camera, 360×640 |
 | `task` | one of the episode's "seen" instructions |
+
+## 6. Fine-tune SmolVLA
+
+```bash
+cd ~/6dofvla
+bash scripts/robotwin/train.sh                         # 20,000 steps, batch 4, into outputs/robotwin_train_<time>/
+STEPS=200 bash scripts/robotwin/train.sh outputs/smoke  # quick check that everything loads
+```
+
+Training starts from `lerobot/smolvla_base`, which the script downloads to `models/smolvla_base` at a pinned revision. It does not start from the LIBERO checkpoint, because Panthera actions are absolute joint positions, while LIBERO actions are end-effector deltas. Only the action expert and the state projection are trained; the vision-language backbone stays frozen. The base model names its cameras `camera1`..`camera3`, so `--rename_map` feeds head to camera1 and wrist to camera2, and camera3 is left empty. **At inference, rename the camera keys the same way.**
+
+On an RTX 3050 Ti (4 GiB) this runs at about 1.9 steps/s and uses 2.05 GB of GPU memory, so 20,000 steps take about 3 hours. `DATASET`, `BATCH_SIZE`, `STEPS` and `SAVE_FREQ` override the defaults, and extra arguments are passed to lerobot-train. The checkpoint's config.json still lists the base model's input shapes (6-D state, 256×256 cameras). This does not matter: SmolVLA pads state to 32 values and resizes images to 512, and the normalisation statistics saved with the checkpoint are 7-D, computed from the dataset.
+
+## 7. Evaluate in RoboTwin
+
+```bash
+cd ~/6dofvla
+bash scripts/robotwin/eval.sh outputs/<run>/checkpoints/020000/pretrained_model 20          # 20 episodes, seen instructions
+bash scripts/robotwin/eval.sh outputs/<run>/checkpoints/020000/pretrained_model 20 unseen   # unseen instructions
+```
+
+The evaluation uses RoboTwin's own evaluator and success check. RoboTwin runs on Python 3.10 and LeRobot 0.6.1 needs 3.12, so it runs as two processes:
+
+- `policy_server.py` loads the checkpoint in `.venv` and answers on a local socket.
+- RoboTwin's `script/eval_policy.py` runs in the `RoboTwin` env and loads `smolvla_panthera.py` as its policy. That module sends the head and wrist images, the 7-D state and the instruction, then executes the returned actions.
+
+Test seeds start at 100000 × (SEED + 1), so the layouts were never seen in training. Before each episode RoboTwin replays its scripted expert on the seed and skips seeds the expert cannot solve.
+
+Results go to `$ROBOTWIN_DIR/eval_result/<task>/smolvla_panthera/<config>/<run>_<step>/<time>/`, as `_result.txt` (the success rate) plus one head-camera video per episode. Each episode is limited to 400 actions for move_pillbottle_pad. `ACTION_STEPS` (default 10, at most 50) sets how many actions of each predicted chunk run before the policy sees a new observation.
+
+**Do not evaluate while training on a 4 GiB GPU.** The simulator's planner needs about 1 GB. If it runs out of memory, every expert check fails silently and the log only prints `error occurs !`. For a quick check during training, `DEVICE=cpu` keeps the policy server off the GPU. That is slow (about 6.5 s per request), so combine it with `ACTION_STEPS=50`.
+
+## 8. ACT baseline
+
+RoboTwin's ACT is a check that a task can be learned from the collected data at all. If ACT succeeds where SmolVLA fails, the problem lies in the SmolVLA setup; if ACT fails too, the data or the task is the problem. RoboTwin's own ACT scripts expect two arms (14-D, three cameras), so these wrappers run its unchanged `policy/ACT` code on single-arm data:
+
+```bash
+cd ~/6dofvla
+.venv/bin/python scripts/robotwin/act_convert.py \
+  ~/panthera/Panthera-HT_RoboTwin/RoboTwin/data/move_pillbottle_pad/move_pillbottle_pad_panthera_single_30hz
+bash scripts/robotwin/act_train.sh data/act_move_pillbottle_pad_panthera_single_30hz outputs/act_pillbottle_clean50
+bash scripts/robotwin/act_eval.sh outputs/act_pillbottle_clean50 20
+```
+
+- `act_convert.py` keeps the same frames as the LeRobot converter (repeats dropped, DART episodes split around each push), so both policies learn from the same (state, action) pairs. Both cameras are resized to 240×320; ACT places the cameras side by side, so they must share one size. 50 demos take 3.2 GB.
+- `act_train.sh` uses the hyperparameters of RoboTwin's `policy/ACT/train.sh` (chunk 50, batch 8, 6000 epochs). It holds out 20% of the episodes for validation and saves the lowest-validation-loss weights as `policy_best.ckpt`. On the RTX 3050 Ti it needs 2.7 GB and about 4 hours.
+- `act_eval.sh` runs RoboTwin's evaluator with `act_panthera.py` as the policy, with temporal aggregation (a new chunk every step, averaged with the earlier ones). `SEED` and `TEXTURES` work as in eval.sh, and `CHECKPOINT` picks another `.ckpt` file. Results go to `eval_result/<task>/act_panthera/<config>/<checkpoint dir>_<ckpt>/`.
 
 ## Things to know
 

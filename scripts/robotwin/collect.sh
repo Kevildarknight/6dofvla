@@ -4,6 +4,8 @@
 # Defaults: move_pillbottle_pad, move_pillbottle_pad_panthera_single_30hz, the config's episode_num.
 # RoboTwin reads configs only from its own task_config/, so the config is copied there first
 # (a new file; no RoboTwin file is edited). Output: $ROBOTWIN_DIR/data/<task_name>/<config_name>/.
+# DART=1 collects through dart_collect.py, which perturbs the expert (DART_PROB, DART_STD) and
+# lists the perturbation frames in <output>/dart/; use a config such as *_dart.yml for that.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 ROBOTWIN_DIR="${ROBOTWIN_DIR:-$HOME/panthera/Panthera-HT_RoboTwin/RoboTwin}"
@@ -14,7 +16,12 @@ if [[ -n "${3:-}" ]]; then
   episode_args=(--episode-num "$3")
 fi
 
+collector=script/collect_data.py
+if [[ -n "${DART:-}" ]]; then
+  collector="$here/dart_collect.py"
+fi
+
 cp "$here/$config_name.yml" "$ROBOTWIN_DIR/task_config/$config_name.yml"
 cd "$ROBOTWIN_DIR"
 conda run --no-capture-output -n RoboTwin \
-  python -u script/collect_data.py "$task_name" "$config_name" "${episode_args[@]}"
+  python -u "$collector" "$task_name" "$config_name" "${episode_args[@]}"
