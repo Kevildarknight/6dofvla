@@ -32,3 +32,4 @@
 !scripts/robotwin/*.py
 !scripts/robotwin/*.yml
 !scripts/robotwin/README.md
+!scripts/robotwin/TEAM_GUIDE.md
