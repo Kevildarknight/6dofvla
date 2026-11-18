@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Evaluate a SmolVLA checkpoint in RoboTwin with RoboTwin's own evaluator and success check.
+# Evaluate a LeRobot checkpoint (SmolVLA, or Diffusion Policy from train_diffusion.sh) in RoboTwin with RoboTwin's own evaluator and success check.
 # Usage: bash scripts/robotwin/eval.sh <pretrained_model dir> [episodes] [seen|unseen]
 # Env overrides: TASK_NAME, TASK_CONFIG, SEED, ACTION_STEPS (actions per request), DEVICE, PORT, ROBOTWIN_DIR,
 # TEXTURES (unseen, the evaluator's default, or seen: the training backgrounds, via eval_seen_textures.py).
 # SEED=-1 starts at seed 0, the same seeds as data collection.
 # TEMPORAL_ENSEMBLE=0.01 queries the policy every step and averages overlapping chunks, as
 # RoboTwin's ACT evaluation does (ACTION_STEPS is then ignored).
+# N_ACTION_STEPS overrides a Diffusion Policy's n_action_steps (actions run before it replans).
 # Starts policy_server.py in this repository's .venv, then runs RoboTwin's script/eval_policy.py
 # in the RoboTwin conda env with smolvla_panthera.py as the policy. Test seeds start at
 # 100000 * (SEED + 1), so they never overlap the collection seeds.
@@ -38,6 +39,9 @@ if [[ -n "${TEMPORAL_ENSEMBLE:-}" ]]; then
 elif [[ "${ACTION_STEPS:-10}" != 10 ]]; then
   ckpt_setting="${ckpt_setting}_steps${ACTION_STEPS}"
 fi
+if [[ -n "${N_ACTION_STEPS:-}" ]]; then
+  ckpt_setting="${ckpt_setting}_n${N_ACTION_STEPS}"
+fi
 
 server_log="$(mktemp -t smolvla_server.XXXXXX.log)"
 device="${DEVICE:-cuda}"
@@ -49,7 +53,8 @@ if [[ "$device" == cpu ]]; then
 fi
 env "${server_env[@]}" "$repo_root/.venv/bin/python" "$here/policy_server.py" "$checkpoint" --port "$port" \
   --action-steps "${ACTION_STEPS:-10}" --device "$device" \
-  ${TEMPORAL_ENSEMBLE:+--temporal-ensemble "$TEMPORAL_ENSEMBLE"} > "$server_log" 2>&1 &
+  ${TEMPORAL_ENSEMBLE:+--temporal-ensemble "$TEMPORAL_ENSEMBLE"} \
+  ${N_ACTION_STEPS:+--n-action-steps "$N_ACTION_STEPS"} > "$server_log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 until grep -q "server ready" "$server_log"; do

@@ -80,7 +80,7 @@ Output: `$ROBOTWIN_DIR/data/move_pillbottle_pad/move_pillbottle_pad_panthera_sin
 A policy trained only on clean expert demos never sees the arm off the expert's path. In closed loop its small errors add up until the grasp misses. Our first model scored 0/20 for this reason, even on the training layouts. DART collection pushes the expert off course and records the recovery:
 
 ```bash
-DART=1 bash scripts/robotwin/collect.sh move_pillbottle_pad move_pillbottle_pad_panthera_single_30hz_dart   # 100 episodes
+DART=1 bash scripts/robotwin/collect.sh move_pillbottle_pad move_pillbottle_pad_panthera_single_30hz_dart   # 100 episodes; append a 3rd argument (e.g. 200) to extend
 ```
 
 `dart_collect.py` perturbs each unconstrained arm motion with probability `DART_PROB` (default 0.6):
