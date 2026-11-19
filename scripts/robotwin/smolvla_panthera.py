@@ -8,6 +8,10 @@ Per call of eval: send the current head and wrist images, the 7-D joint state
 and the instruction; receive a few actions; execute them one by one. RoboTwin's
 take_action expects a 14-D dual-arm qpos; in single-arm mode the right-arm API
 is an alias of the left arm, so the 7-D action is sent for both halves.
+
+RoboTwin's per-task step limits (task_config/_eval_step_limit.yml) were set for
+its default 16.7 Hz recording; at our 31.25 Hz the same motion takes about 1.9
+times as many steps. A step_lim override (eval.sh: STEP_LIM) replaces the limit.
 """
 
 from multiprocessing.connection import Client
@@ -23,8 +27,9 @@ def pack(image):
 
 
 class SmolVLAClient:
-    def __init__(self, port):
+    def __init__(self, port, step_lim=None):
         self.connection = Client(("localhost", port), authkey=AUTHKEY)
+        self.step_lim = step_lim
 
     def act(self, observation, task):
         cameras = observation["observation"]
@@ -44,10 +49,13 @@ class SmolVLAClient:
 
 
 def get_model(usr_args):
-    return SmolVLAClient(int(usr_args.get("port", 6010)))
+    step_lim = usr_args.get("step_lim")
+    return SmolVLAClient(int(usr_args.get("port", 6010)), int(step_lim) if step_lim else None)
 
 
 def eval(TASK_ENV, model, observation):
+    if model.step_lim:
+        TASK_ENV.step_lim = model.step_lim  # read by eval_policy's loop and take_action
     actions = model.act(observation, TASK_ENV.get_instruction())
     actions[:, 6] = np.clip(actions[:, 6], 0, 1)  # gripper command range in RoboTwin
     for action in actions:

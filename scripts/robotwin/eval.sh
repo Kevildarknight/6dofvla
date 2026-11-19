@@ -7,6 +7,7 @@
 # TEMPORAL_ENSEMBLE=0.01 queries the policy every step and averages overlapping chunks, as
 # RoboTwin's ACT evaluation does (ACTION_STEPS is then ignored).
 # N_ACTION_STEPS overrides a Diffusion Policy's n_action_steps (actions run before it replans).
+# STEP_LIM replaces RoboTwin's per-task step limit (set for 16.7 Hz; see smolvla_panthera.py).
 # Starts policy_server.py in this repository's .venv, then runs RoboTwin's script/eval_policy.py
 # in the RoboTwin conda env with smolvla_panthera.py as the policy. Test seeds start at
 # 100000 * (SEED + 1), so they never overlap the collection seeds.
@@ -41,6 +42,9 @@ elif [[ "${ACTION_STEPS:-10}" != 10 ]]; then
 fi
 if [[ -n "${N_ACTION_STEPS:-}" ]]; then
   ckpt_setting="${ckpt_setting}_n${N_ACTION_STEPS}"
+fi
+if [[ -n "${STEP_LIM:-}" ]]; then
+  ckpt_setting="${ckpt_setting}_lim${STEP_LIM}"
 fi
 
 server_log="$(mktemp -t smolvla_server.XXXXXX.log)"
@@ -78,4 +82,5 @@ PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" conda run --no-capture-output -n R
   --policy_name smolvla_panthera \
   --test_num "$episodes" \
   --instruction_type "$instruction_type" \
-  --port "$port"
+  --port "$port" \
+  ${STEP_LIM:+--step_lim "$STEP_LIM"}

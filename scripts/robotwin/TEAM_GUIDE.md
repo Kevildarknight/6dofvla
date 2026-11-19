@@ -50,7 +50,9 @@ T=move_stapler_pad          # đổi thành task của bạn
 
 GPU 4 GB không chạy được hai việc cùng lúc, nên làm **lần lượt từng bước**. Thời gian trong ngoặc là ước tính trên RTX 3050 Ti.
 
-### 2.1 Chạy thử 2 episode (khoảng 10 phút)
+### 2.1 Chạy thử 2 episode (khoảng 6–10 phút)
+
+Cả 4 task đã được chạy thử trên máy của nhóm. Mỗi task thu được 2 episode thành công, và chuyển sang LeRobot đúng định dạng: 7-D state và action, ảnh head 240×320, ảnh wrist 360×640. Bạn vẫn nên chạy thử bước này trên máy mình để kiểm tra phần cài đặt.
 
 ```bash
 bash scripts/robotwin/collect.sh $T ${T}_panthera_single_30hz 2
@@ -129,14 +131,24 @@ PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python scripts/robotw
 
 ### 2.7 Eval (khoảng 1 giờ mỗi checkpoint)
 
+Giới hạn số bước mặc định của RoboTwin được đặt cho tần số thu gốc 16.7 Hz. Ở 31.25 Hz, cùng một động tác tốn khoảng 1.9 lần số bước. Với `move_stapler_pad` và `place_mouse_pad`, demo của chuyên gia đã dùng tới khoảng 90 % giới hạn mặc định 400 bước. Vì vậy, đặt `STEP_LIM` bằng giới hạn mặc định nhân 1.875:
+
+| Task | Giới hạn mặc định | `STEP_LIM` |
+| --- | --- | --- |
+| `move_stapler_pad` | 400 | 750 |
+| `place_mouse_pad` | 400 | 750 |
+| `place_empty_cup` | 500 | 940 |
+| `stack_blocks_two` | 800 | 1500 |
+
 ```bash
+L=750   # theo bảng trên
 for c in 040000 060000; do
-  TASK_NAME=$T TASK_CONFIG=${T}_panthera_single_30hz \
+  TASK_NAME=$T TASK_CONFIG=${T}_panthera_single_30hz STEP_LIM=$L \
     bash scripts/robotwin/eval.sh outputs/dp_$T/checkpoints/$c/pretrained_model 20 > outputs/eval_dp_${T}_$c.log 2>&1
 done
 ```
 
-Kết quả nằm trong `~/panthera/Panthera-HT_RoboTwin/RoboTwin/eval_result/$T/smolvla_panthera/${T}_panthera_single_30hz/dp_${T}_<checkpoint>/<thời gian>/`. Thư mục này gồm:
+Kết quả nằm trong `~/panthera/Panthera-HT_RoboTwin/RoboTwin/eval_result/$T/smolvla_panthera/${T}_panthera_single_30hz/dp_${T}_<checkpoint>_lim<L>/<thời gian>/`. Thư mục này gồm:
 
 - `_result.txt`: tỉ lệ thành công;
 - `episodeN.mp4`: video từng episode.
