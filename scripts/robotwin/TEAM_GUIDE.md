@@ -10,7 +10,7 @@ Dành cho thành viên thu dữ liệu mô phỏng Panthera-HT trong RoboTwin. M
 | A | `move_stapler_pad`, `place_mouse_pad` |
 | B | `place_empty_cup`, `stack_blocks_two` |
 
-Task `move_pillbottle_pad` đã làm xong. Đó là ví dụ mẫu: DP đạt 11/20 trên eval chuẩn, dataset ở [Kevildarknight/panthera_move_pillbottle_pad](https://huggingface.co/datasets/Kevildarknight/panthera_move_pillbottle_pad).
+Task `move_pillbottle_pad` đã làm xong. Đó là ví dụ mẫu: DP (200 demo sạch + 200 DART, 60k bước) đạt 14/20 trên eval chuẩn, dataset ở [Kevildarknight/panthera_move_pillbottle_pad](https://huggingface.co/datasets/Kevildarknight/panthera_move_pillbottle_pad).
 
 ## 0. Máy cần có
 
@@ -120,6 +120,8 @@ Script tự nhận task từ tên thư mục và tạo dataset card.
 ```bash
 DATASET=$N STEPS=60000 bash scripts/robotwin/train_diffusion.sh outputs/dp_$T > outputs/train_dp_$T.log 2>&1
 ```
+
+Script mặc định train cả đoạn thả vật ở cuối mỗi demo (`DROP_N_LAST=0`). Đừng đổi tham số này: với giá trị mặc định cũ của LeRobot (15), robot đặt vật đúng chỗ rồi mở kẹp được một nửa lại đóng vào. Trên task lọ thuốc, sửa lỗi này nâng kết quả từ 11/20 lên 14/20.
 
 Checkpoint được lưu ở bước 20k, 40k và 60k, mỗi cái khoảng 1 GB. Muốn tạm dừng thì Ctrl+C. Để train tiếp, dùng lệnh dưới đây. **Phải có biến `PYTORCH_CUDA_ALLOC_CONF`**, nếu không sẽ bị lỗi hết bộ nhớ GPU:
 

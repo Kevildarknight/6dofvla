@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Train LeRobot's Diffusion Policy on a converted RoboTwin Panthera dataset.
 # Usage: [DATASET=robotwin_<config>] bash scripts/robotwin/train_diffusion.sh [output_dir] [extra lerobot-train args...]
-# Env overrides: BATCH_SIZE (16, the most that fits 4 GiB), STEPS (60000), SAVE_FREQ (20000).
+# Env overrides: BATCH_SIZE (16, the most that fits 4 GiB), STEPS (60000), SAVE_FREQ (20000),
+# DROP_N_LAST (0). RoboTwin demos end 13 frames after the gripper starts opening, so
+# LeRobot's default of 15 hides the release and the policy reopens and recloses the gripper over the pad.
 # Both cameras are resized to 240x320 (panthera_policies.py) and randomly cropped to 90 %.
 # U-Net down_dims (256, 512, 1024), the smaller variant of the paper, so training fits 4 GiB.
 # Horizon 32 frames (about 1 s) from 2 observation steps; 16 actions are executed per
@@ -26,7 +28,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
   --policy.crop_ratio=0.9 \
   --policy.horizon=32 \
   --policy.n_action_steps=16 \
-  --policy.drop_n_last_frames=15 \
+  --policy.drop_n_last_frames="${DROP_N_LAST:-0}" \
   --policy.down_dims='[256, 512, 1024]' \
   --dataset.repo_id="local/$dataset" \
   --dataset.root="data/$dataset" \
